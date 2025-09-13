@@ -258,22 +258,22 @@ export default function Home() {
       </div>
 
       {/* Footer */}
-      <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 text-center">
-        <div className="flex items-center justify-center gap-4 text-sm text-gray-400">
+      <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 text-center px-4 w-full max-w-xs sm:max-w-none">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-4 text-xs sm:text-sm text-gray-400">
           <a
             href="https://httpparam.me"
             target="_blank"
             rel="noopener noreferrer"
-            className="hover:text-gray-300 transition-colors"
+            className="hover:text-gray-300 transition-colors whitespace-nowrap"
           >
             Made with 🩵 by http.param
           </a>
-          <span className="text-gray-600">•</span>
+          <span className="hidden sm:inline text-gray-600">•</span>
           <a
             href="https://github.com/httpparam/kopy"
             target="_blank"
             rel="noopener noreferrer"
-            className="hover:text-gray-300 transition-colors"
+            className="hover:text-gray-300 transition-colors whitespace-nowrap"
           >
             Source
           </a>
