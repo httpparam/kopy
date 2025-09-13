@@ -28,6 +28,10 @@
     @apply w-full px-3 py-2 bg-transparent border border-gray-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400;
   }
   
+  .input-field option {
+    @apply bg-gray-800 text-white;
+  }
+  
   .card {
     @apply bg-transparent rounded-xl border border-gray-700 p-6;
   }
