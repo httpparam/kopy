@@ -317,6 +317,29 @@ export default function ViewPaste() {
 
         </div>
       </div>
+
+      {/* Footer */}
+      <div className="mt-12 text-center">
+        <div className="flex items-center justify-center gap-4 text-sm text-gray-400">
+          <a
+            href="https://httpparam.me"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-gray-300 transition-colors"
+          >
+            Made with 🩵 by http.param
+          </a>
+          <span className="text-gray-600">•</span>
+          <a
+            href="https://github.com/httpparam/kopy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-gray-300 transition-colors"
+          >
+            Source
+          </a>
+        </div>
+      </div>
     </div>
   )
 }
