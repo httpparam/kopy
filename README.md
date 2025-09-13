@@ -34,6 +34,10 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) to view the application.
 
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=httpparam/kopy&type=Date)](https://www.star-history.com/#httpparam/kopy&Date)
+
 ## License
 
 MIT License - feel free to use this project for your own needs!
