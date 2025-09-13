@@ -1,4 +1,4 @@
-# Secure Paste
+# KOPY
 
 A secure text sharing application that encrypts content client-side and stores it in Supabase with automatic expiration after 10 minutes.
 
