@@ -215,14 +215,15 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-base flex flex-col">
       {/* Top Control Bar */}
-      <div className="bg-surface0 border-b border-surface2 px-6 py-3 flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-6">
-            {/* App Name */}
-            <div className="flex items-center space-x-2">
-              <h1 className="text-xl font-bold text-text">🗝️ KOPY</h1>
-            </div>
-            
+      <div className="bg-surface0 border-b border-surface2 px-4 sm:px-6 py-3 flex-shrink-0">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-3 lg:space-y-0">
+          {/* App Name - Always visible */}
+          <div className="flex items-center space-x-2">
+            <h1 className="text-xl font-bold text-text">🗝️ KOPY</h1>
+          </div>
+          
+          {/* Controls - Stack on mobile, row on desktop */}
+          <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 lg:space-x-6">
             {/* Author Name */}
             <div className="flex items-center space-x-2">
               <input
@@ -230,17 +231,17 @@ export default function Home() {
                 value={senderName}
                 onChange={(e) => setSenderName(e.target.value)}
                 placeholder="Author (optional)"
-                className="input-field text-sm w-32"
+                className="input-field text-sm w-full sm:w-32"
               />
             </div>
 
             {/* Time Dropdown */}
             <div className="flex items-center space-x-2">
-              <span className="text-subtext1 text-sm">Expires:</span>
+              <span className="text-subtext1 text-sm whitespace-nowrap">Expires:</span>
               <select
                 value={expirationMinutes}
                 onChange={(e) => setExpirationMinutes(Number(e.target.value))}
-                className="input-field text-sm w-auto"
+                className="input-field text-sm w-full sm:w-auto"
               >
                 <option value={10}>10 minutes</option>
                 <option value={60}>1 hour</option>
@@ -257,100 +258,104 @@ export default function Home() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password (optional)"
-                className="input-field text-sm w-32"
+                className="input-field text-sm w-full sm:w-32"
               />
             </div>
 
             {/* Content Type */}
             <div className="flex items-center space-x-2">
-              <span className="text-subtext1 text-sm">Type:</span>
+              <span className="text-subtext1 text-sm whitespace-nowrap">Type:</span>
               <select
                 value={contentType}
                 onChange={(e) => setContentType(e.target.value as 'text' | 'markdown')}
-                className="input-field text-sm w-auto"
+                className="input-field text-sm w-full sm:w-auto"
               >
                 <option value="text">Plain Text</option>
                 <option value="markdown">Markdown</option>
               </select>
             </div>
-
           </div>
 
-          {showPreview ? (
-            <div className="flex items-center space-x-2">
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+            {showPreview ? (
+              <>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={copyToClipboard}
+                    className="btn-secondary text-xs px-3 py-1 flex items-center"
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="h-3 w-3 mr-1" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3 w-3 mr-1" />
+                        Copy
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={generateQRCode}
+                    className="btn-secondary text-xs px-3 py-1 flex items-center"
+                  >
+                    <QrCode className="h-3 w-3 mr-1" />
+                    QR
+                  </button>
+
+                  <button
+                    onClick={sendEmail}
+                    className="btn-secondary text-xs px-3 py-1 flex items-center"
+                  >
+                    <Mail className="h-3 w-3 mr-1" />
+                    Email
+                  </button>
+
+                  <a
+                    href={shareUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-primary text-xs px-3 py-1 flex items-center"
+                  >
+                    <Eye className="h-3 w-3 mr-1" />
+                    View
+                  </a>
+
+                  <button
+                    onClick={createNewPaste}
+                    className="btn-primary text-xs px-3 py-1"
+                  >
+                    New Paste
+                  </button>
+                </div>
+              </>
+            ) : (
               <button
-                onClick={copyToClipboard}
-                className="btn-secondary text-xs px-3 py-1 flex items-center"
+                type="submit"
+                form="paste-form"
+                disabled={isLoading || !content.trim()}
+                className="btn-primary text-sm px-6 w-full sm:w-auto"
               >
-                {copied ? (
+                {isLoading ? (
                   <>
-                    <Check className="h-3 w-3 mr-1" />
-                    Copied!
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2 inline-block"></div>
+                    Creating...
                   </>
                 ) : (
-                  <>
-                    <Copy className="h-3 w-3 mr-1" />
-                    Copy
-                  </>
+                  'Create'
                 )}
               </button>
-
-              <button
-                onClick={generateQRCode}
-                className="btn-secondary text-xs px-3 py-1 flex items-center"
-              >
-                <QrCode className="h-3 w-3 mr-1" />
-                QR
-              </button>
-
-              <button
-                onClick={sendEmail}
-                className="btn-secondary text-xs px-3 py-1 flex items-center"
-              >
-                <Mail className="h-3 w-3 mr-1" />
-                Email
-              </button>
-
-              <a
-                href={shareUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-primary text-xs px-3 py-1 flex items-center"
-              >
-                <Eye className="h-3 w-3 mr-1" />
-                View
-              </a>
-
-              <button
-                onClick={createNewPaste}
-                className="btn-primary text-xs px-3 py-1"
-              >
-                New Paste
-              </button>
-            </div>
-          ) : (
-            <button
-              type="submit"
-              form="paste-form"
-              disabled={isLoading || !content.trim()}
-              className="btn-primary text-sm px-6"
-            >
-              {isLoading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2 inline-block"></div>
-                  Creating...
-                </>
-              ) : (
-                'Create'
-              )}
-            </button>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
       {/* Connection Status */}
       {connectionStatus === 'checking' && (
-        <div className="bg-yellow/20 border-b border-yellow px-6 py-2">
+        <div className="bg-yellow/20 border-b border-yellow px-4 sm:px-6 py-2">
           <div className="flex items-center">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow mr-2"></div>
             <span className="text-yellow text-sm">Checking connection...</span>
@@ -358,7 +363,7 @@ export default function Home() {
         </div>
       )}
       {connectionStatus === 'connected' && (
-        <div className="bg-green/20 border-b border-green px-6 py-2">
+        <div className="bg-green/20 border-b border-green px-4 sm:px-6 py-2">
           <div className="flex items-center">
             <div className="w-2 h-2 bg-green rounded-full mr-2"></div>
             <span className="text-green text-sm">Connected to database</span>
@@ -366,7 +371,7 @@ export default function Home() {
         </div>
       )}
       {connectionStatus === 'error' && (
-        <div className="bg-red/20 border-b border-red px-6 py-2">
+        <div className="bg-red/20 border-b border-red px-4 sm:px-6 py-2">
           <div className="flex items-center">
             <div className="w-2 h-2 bg-red rounded-full mr-2"></div>
             <span className="text-red text-sm">Database connection failed</span>
@@ -376,12 +381,12 @@ export default function Home() {
 
  {/* View Mode Tabs */}
  {!showPreview && (
-   <div className="bg-surface0 border-b border-surface2 px-6 py-2 flex-shrink-0">
+   <div className="bg-surface0 border-b border-surface2 px-4 sm:px-6 py-2 flex-shrink-0">
      <div className="flex items-center">
        <div className="flex items-center space-x-1">
          <button
            onClick={() => setViewMode('edit')}
-           className={`px-4 py-2 text-sm rounded-full transition-colors ${
+           className={`px-3 sm:px-4 py-2 text-sm rounded-full transition-colors ${
              viewMode === 'edit' 
                ? 'bg-mauve text-base' 
                : 'bg-transparent text-subtext1 hover:text-text border border-surface2'
@@ -391,7 +396,7 @@ export default function Home() {
          </button>
          <button
            onClick={() => setViewMode('preview')}
-           className={`px-4 py-2 text-sm rounded-full transition-colors ${
+           className={`px-3 sm:px-4 py-2 text-sm rounded-full transition-colors ${
              viewMode === 'preview' 
                ? 'bg-mauve text-base' 
                : 'bg-transparent text-subtext1 hover:text-text border border-surface2'
@@ -407,10 +412,10 @@ export default function Home() {
  {/* Main Text Area - Full screen height */}
  <div className="flex-1 bg-base flex">
    {showPreview ? (
-     <div className="flex-1 flex p-4">
+     <div className="flex-1 flex p-2 sm:p-4">
        {contentType === 'markdown' ? (
          <div 
-           className="flex-1 bg-surface0 text-text p-6 rounded-lg border border-mauve overflow-auto"
+           className="flex-1 bg-surface0 text-text p-3 sm:p-6 rounded-lg border border-mauve overflow-auto"
            dangerouslySetInnerHTML={{ 
              __html: parseMarkdown(previewContent)
            }}
@@ -419,23 +424,23 @@ export default function Home() {
          <textarea
            value={previewContent}
            readOnly
-           className="flex-1 bg-surface0 text-text p-6 resize-none focus:outline-none rounded-lg border border-mauve"
+           className="flex-1 bg-surface0 text-text p-3 sm:p-6 resize-none focus:outline-none rounded-lg border border-mauve"
          />
        )}
      </div>
    ) : (
-     <form id="paste-form" onSubmit={handleSubmit} className="flex-1 flex p-4">
+     <form id="paste-form" onSubmit={handleSubmit} className="flex-1 flex p-2 sm:p-4">
        {viewMode === 'edit' ? (
          <textarea
            id="content"
            value={content}
            onChange={(e) => setContent(e.target.value)}
            placeholder="Paste your text here..."
-           className="flex-1 bg-surface0 text-text p-6 resize-none focus:outline-none placeholder-overlay1 rounded-lg border border-mauve"
+           className="flex-1 bg-surface0 text-text p-3 sm:p-6 resize-none focus:outline-none placeholder-overlay1 rounded-lg border border-mauve"
            required
          />
        ) : (
-         <div className="flex-1 bg-surface0 text-text p-6 rounded-lg border border-mauve overflow-auto">
+         <div className="flex-1 bg-surface0 text-text p-3 sm:p-6 rounded-lg border border-mauve overflow-auto">
            {contentType === 'markdown' ? (
              <div 
                className="prose prose-invert max-w-none"
@@ -456,7 +461,7 @@ export default function Home() {
 
       {/* Success Message */}
       {shareUrl && !showPreview && (
-        <div className="bg-surface0 border-t border-surface2 p-6 flex-shrink-0">
+        <div className="bg-surface0 border-t border-surface2 p-4 sm:p-6 flex-shrink-0">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center">
               <Check className="h-5 w-5 text-green mr-2" />
@@ -480,7 +485,7 @@ export default function Home() {
 
       {/* QR Code Display */}
       {showQR && showPreview && (
-        <div className="bg-surface0 border-t border-surface2 px-6 py-4 flex-shrink-0">
+        <div className="bg-surface0 border-t border-surface2 px-4 sm:px-6 py-4 flex-shrink-0">
           <div className="bg-blue/20 border border-blue rounded-lg p-4 text-center">
             <h3 className="text-lg font-semibold text-blue mb-4">QR Code</h3>
             <div className="bg-white p-4 rounded-lg inline-block">
@@ -498,9 +503,9 @@ export default function Home() {
       )}
 
       {/* Footer */}
-      <div className="bg-surface0 border-t border-surface2 px-6 py-4 flex-shrink-0">
-        <div className="flex items-center justify-between text-sm text-overlay1">
-          <div className="flex items-center space-x-4">
+      <div className="bg-surface0 border-t border-surface2 px-4 sm:px-6 py-4 flex-shrink-0">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm text-overlay1 space-y-2 sm:space-y-0">
+          <div className="flex items-center">
             <span>🗝️ KOPY - Because ignorance is bliss</span>
           </div>
           <div className="flex items-center space-x-4">
@@ -508,16 +513,16 @@ export default function Home() {
               href="https://httpparam.me"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-gray-300 transition-colors"
+              className="hover:text-text transition-colors"
             >
               Made with 🩵 by http.param
             </a>
-            <span>•</span>
+            <span className="hidden sm:inline">•</span>
             <a
               href="https://github.com/httpparam/kopy"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-gray-300 transition-colors"
+              className="hover:text-text transition-colors"
             >
               Source
             </a>

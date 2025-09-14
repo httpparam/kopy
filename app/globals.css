@@ -77,3 +77,28 @@
     @apply bg-transparent rounded-xl border border-surface2 p-6;
   }
 }
+
+/* Mobile-specific improvements */
+@media (max-width: 640px) {
+  /* Ensure text is readable on mobile */
+  body {
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+  
+  /* Improve touch targets */
+  .btn-primary,
+  .btn-secondary {
+    min-height: 44px; /* iOS recommended touch target size */
+  }
+  
+  /* Better spacing for mobile */
+  .input-field {
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+  
+  /* Ensure proper text wrapping */
+  .break-all {
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+}

@@ -270,7 +270,7 @@ export default function ViewPaste() {
     return (
       <div className="min-h-screen bg-base flex flex-col">
         {/* Top Control Bar */}
-        <div className="bg-surface0 border-b border-surface2 px-6 py-3 flex-shrink-0">
+        <div className="bg-surface0 border-b border-surface2 px-4 sm:px-6 py-3 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <h1 className="text-xl font-bold text-text">🗝️ KOPY</h1>
@@ -288,9 +288,9 @@ export default function ViewPaste() {
         </div>
 
         {/* Footer */}
-        <div className="bg-surface0 border-t border-surface2 px-6 py-4 flex-shrink-0">
-          <div className="flex items-center justify-between text-sm text-overlay1">
-            <div className="flex items-center space-x-4">
+        <div className="bg-surface0 border-t border-surface2 px-4 sm:px-6 py-4 flex-shrink-0">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm text-overlay1 space-y-2 sm:space-y-0">
+            <div className="flex items-center">
               <span>🗝️ KOPY - Because ignorance is bliss</span>
             </div>
             <div className="flex items-center space-x-4">
@@ -302,6 +302,7 @@ export default function ViewPaste() {
               >
                 Made with ❤️ by http.param
               </a>
+              <span className="hidden sm:inline">•</span>
               <a
                 href="https://github.com/httpparam/kopy"
                 target="_blank"
@@ -321,7 +322,7 @@ export default function ViewPaste() {
     return (
       <div className="min-h-screen bg-base flex flex-col">
         {/* Top Control Bar */}
-        <div className="bg-surface0 border-b border-surface2 px-6 py-3 flex-shrink-0">
+        <div className="bg-surface0 border-b border-surface2 px-4 sm:px-6 py-3 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <h1 className="text-xl font-bold text-text">🗝️ KOPY</h1>
@@ -345,9 +346,9 @@ export default function ViewPaste() {
         </div>
 
         {/* Footer */}
-        <div className="bg-surface0 border-t border-surface2 px-6 py-4 flex-shrink-0">
-          <div className="flex items-center justify-between text-sm text-overlay1">
-            <div className="flex items-center space-x-4">
+        <div className="bg-surface0 border-t border-surface2 px-4 sm:px-6 py-4 flex-shrink-0">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm text-overlay1 space-y-2 sm:space-y-0">
+            <div className="flex items-center">
               <span>🗝️ KOPY - Because ignorance is bliss</span>
             </div>
             <div className="flex items-center space-x-4">
@@ -359,6 +360,7 @@ export default function ViewPaste() {
               >
                 Made with ❤️ by http.param
               </a>
+              <span className="hidden sm:inline">•</span>
               <a
                 href="https://github.com/httpparam/kopy"
                 target="_blank"
@@ -379,7 +381,7 @@ export default function ViewPaste() {
     return (
       <div className="min-h-screen bg-base flex flex-col">
         {/* Top Control Bar */}
-        <div className="bg-surface0 border-b border-surface2 px-6 py-3 flex-shrink-0">
+        <div className="bg-surface0 border-b border-surface2 px-4 sm:px-6 py-3 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <h1 className="text-xl font-bold text-text">🗝️ KOPY</h1>
@@ -428,9 +430,9 @@ export default function ViewPaste() {
         </div>
 
         {/* Footer */}
-        <div className="bg-surface0 border-t border-surface2 px-6 py-4 flex-shrink-0">
-          <div className="flex items-center justify-between text-sm text-overlay1">
-            <div className="flex items-center space-x-4">
+        <div className="bg-surface0 border-t border-surface2 px-4 sm:px-6 py-4 flex-shrink-0">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm text-overlay1 space-y-2 sm:space-y-0">
+            <div className="flex items-center">
               <span>🗝️ KOPY - Because ignorance is bliss</span>
             </div>
             <div className="flex items-center space-x-4">
@@ -442,6 +444,7 @@ export default function ViewPaste() {
               >
                 Made with ❤️ by http.param
               </a>
+              <span className="hidden sm:inline">•</span>
               <a
                 href="https://github.com/httpparam/kopy"
                 target="_blank"
@@ -460,17 +463,18 @@ export default function ViewPaste() {
   return (
     <div className="min-h-screen bg-base flex flex-col">
       {/* Top Control Bar */}
-      <div className="bg-surface0 border-b border-surface2 px-6 py-3 flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-6">
-            {/* App Name */}
-            <div className="flex items-center space-x-2">
-              <h1 className="text-xl font-bold text-text">🗝️ KOPY</h1>
-            </div>
-            
+      <div className="bg-surface0 border-b border-surface2 px-4 sm:px-6 py-3 flex-shrink-0">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-3 lg:space-y-0">
+          {/* App Name - Always visible */}
+          <div className="flex items-center space-x-2">
+            <h1 className="text-xl font-bold text-text">🗝️ KOPY</h1>
+          </div>
+          
+          {/* Info and Actions - Stack on mobile */}
+          <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 lg:space-x-6">
             {/* Author Name */}
             <div className="flex items-center space-x-2">
-              <span className="text-subtext1 text-sm">Author:</span>
+              <span className="text-subtext1 text-sm whitespace-nowrap">Author:</span>
               <span className="text-text font-medium">
                 {paste?.sender_name || 'Anonymous'}
               </span>
@@ -479,38 +483,38 @@ export default function ViewPaste() {
             {/* Time Left Display */}
             <div className="flex items-center space-x-2">
               <Clock className="h-4 w-4 text-yellow" />
-              <span className="text-subtext1 text-sm">Expires:</span>
+              <span className="text-subtext1 text-sm whitespace-nowrap">Expires:</span>
               <span className="text-yellow font-medium">
                 {timeLeft || 'Calculating...'}
               </span>
             </div>
-          </div>
 
-          <button
-            onClick={copyContent}
-            className="btn-secondary text-sm px-4 flex items-center"
-          >
-            {copied ? (
-              <>
-                <Check className="h-4 w-4 mr-2" />
-                Copied!
-              </>
-            ) : (
-              <>
-                <Copy className="h-4 w-4 mr-2" />
-                Copy
-              </>
-            )}
-          </button>
+            <button
+              onClick={copyContent}
+              className="btn-secondary text-sm px-4 flex items-center w-full sm:w-auto justify-center"
+            >
+              {copied ? (
+                <>
+                  <Check className="h-4 w-4 mr-2" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Main Text Area - Full screen height */}
       <div className="flex-1 bg-base flex">
-        <div className="flex-1 flex p-4">
+        <div className="flex-1 flex p-2 sm:p-4">
           {paste?.content_type === 'markdown' ? (
             <div 
-              className="flex-1 bg-surface0 text-text p-6 rounded-lg border border-mauve overflow-auto"
+              className="flex-1 bg-surface0 text-text p-3 sm:p-6 rounded-lg border border-mauve overflow-auto"
               dangerouslySetInnerHTML={{ 
                 __html: parseMarkdown(decryptedContent)
               }}
@@ -519,14 +523,14 @@ export default function ViewPaste() {
             <textarea
               value={decryptedContent}
               readOnly
-              className="flex-1 bg-surface0 text-text p-6 resize-none focus:outline-none rounded-lg border border-mauve"
+              className="flex-1 bg-surface0 text-text p-3 sm:p-6 resize-none focus:outline-none rounded-lg border border-mauve"
             />
           )}
         </div>
       </div>
 
       {/* Security Notice */}
-      <div className="bg-surface0 border-t border-surface2 px-6 py-4 flex-shrink-0">
+      <div className="bg-surface0 border-t border-surface2 px-4 sm:px-6 py-4 flex-shrink-0">
         <div className="bg-blue/20 border border-blue rounded-lg p-4">
           <p className="text-sm text-blue">
             <strong>Security Notice:</strong> This content is encrypted and will be automatically deleted when it expires. 
@@ -536,10 +540,10 @@ export default function ViewPaste() {
       </div>
 
       {/* Footer */}
-      <div className="bg-surface0 border-t border-surface2 px-6 py-4 flex-shrink-0">
-        <div className="flex items-center justify-between text-sm text-overlay1">
-          <div className="flex items-center space-x-4">
-            <span>Kopy - Because ignorance is bliss</span>
+      <div className="bg-surface0 border-t border-surface2 px-4 sm:px-6 py-4 flex-shrink-0">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm text-overlay1 space-y-2 sm:space-y-0">
+          <div className="flex items-center">
+            <span>🗝️ KOPY - Because ignorance is bliss</span>
           </div>
           <div className="flex items-center space-x-4">
             <a
@@ -550,6 +554,7 @@ export default function ViewPaste() {
             >
               Made with ❤️ by http.param
             </a>
+            <span className="hidden sm:inline">•</span>
             <a
               href="https://github.com/httpparam/kopy"
               target="_blank"

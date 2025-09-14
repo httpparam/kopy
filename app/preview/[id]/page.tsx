@@ -211,7 +211,7 @@ export default function PreviewPaste() {
     return (
       <div className="min-h-screen bg-base flex flex-col">
         {/* Top Control Bar */}
-        <div className="bg-surface0 border-b border-surface2 px-6 py-3 flex-shrink-0">
+        <div className="bg-surface0 border-b border-surface2 px-4 sm:px-6 py-3 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <h1 className="text-xl font-bold text-text">🗝️ KOPY</h1>
@@ -229,9 +229,9 @@ export default function PreviewPaste() {
         </div>
 
         {/* Footer */}
-        <div className="bg-surface0 border-t border-surface2 px-6 py-4 flex-shrink-0">
-          <div className="flex items-center justify-between text-sm text-overlay1">
-            <div className="flex items-center space-x-4">
+        <div className="bg-surface0 border-t border-surface2 px-4 sm:px-6 py-4 flex-shrink-0">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm text-overlay1 space-y-2 sm:space-y-0">
+            <div className="flex items-center">
               <span>🗝️ KOPY - Because ignorance is bliss</span>
             </div>
             <div className="flex items-center space-x-4">
@@ -243,6 +243,7 @@ export default function PreviewPaste() {
               >
                 Made with ❤️ by http.param
               </a>
+              <span className="hidden sm:inline">•</span>
               <a
                 href="https://github.com/httpparam/kopy"
                 target="_blank"
@@ -262,7 +263,7 @@ export default function PreviewPaste() {
     return (
       <div className="min-h-screen bg-base flex flex-col">
         {/* Top Control Bar */}
-        <div className="bg-surface0 border-b border-surface2 px-6 py-3 flex-shrink-0">
+        <div className="bg-surface0 border-b border-surface2 px-4 sm:px-6 py-3 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <h1 className="text-xl font-bold text-text">🗝️ KOPY</h1>
@@ -285,9 +286,9 @@ export default function PreviewPaste() {
         </div>
 
         {/* Footer */}
-        <div className="bg-surface0 border-t border-surface2 px-6 py-4 flex-shrink-0">
-          <div className="flex items-center justify-between text-sm text-overlay1">
-            <div className="flex items-center space-x-4">
+        <div className="bg-surface0 border-t border-surface2 px-4 sm:px-6 py-4 flex-shrink-0">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm text-overlay1 space-y-2 sm:space-y-0">
+            <div className="flex items-center">
               <span>🗝️ KOPY - Because ignorance is bliss</span>
             </div>
             <div className="flex items-center space-x-4">
@@ -299,6 +300,7 @@ export default function PreviewPaste() {
               >
                 Made with ❤️ by http.param
               </a>
+              <span className="hidden sm:inline">•</span>
               <a
                 href="https://github.com/httpparam/kopy"
                 target="_blank"
@@ -317,19 +319,20 @@ export default function PreviewPaste() {
   return (
     <div className="min-h-screen bg-base flex flex-col">
       {/* Top Control Bar */}
-      <div className="bg-surface0 border-b border-surface2 px-6 py-3 flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-6">
-            {/* App Name */}
-            <div className="flex items-center space-x-2">
-              <h1 className="text-xl font-bold text-text">🗝️ KOPY</h1>
-            </div>
-            
+      <div className="bg-surface0 border-b border-surface2 px-4 sm:px-6 py-3 flex-shrink-0">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-3 lg:space-y-0">
+          {/* App Name - Always visible */}
+          <div className="flex items-center space-x-2">
+            <h1 className="text-xl font-bold text-text">🗝️ KOPY</h1>
+          </div>
+          
+          {/* Info and Actions - Stack on mobile */}
+          <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 lg:space-x-6">
             {/* Paste Info */}
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-col sm:flex-row sm:items-center space-y-1 sm:space-y-0 sm:space-x-4">
               <div className="flex items-center space-x-2">
                 <User className="h-4 w-4 text-subtext1" />
-                <span className="text-subtext1 text-sm">Author:</span>
+                <span className="text-subtext1 text-sm whitespace-nowrap">Author:</span>
                 <span className="text-text font-medium">
                   {paste?.sender_name || 'Anonymous'}
                 </span>
@@ -337,45 +340,45 @@ export default function PreviewPaste() {
 
               <div className="flex items-center space-x-2">
                 <Clock className="h-4 w-4 text-yellow" />
-                <span className="text-subtext1 text-sm">Expires:</span>
+                <span className="text-subtext1 text-sm whitespace-nowrap">Expires:</span>
                 <span className="text-yellow font-medium">{timeLeft}</span>
               </div>
             </div>
-          </div>
 
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={copyToClipboard}
-              className="btn-secondary text-xs px-3 py-1 flex items-center"
-            >
-              {copied ? (
-                <>
-                  <Check className="h-3 w-3 mr-1" />
-                  Copied!
-                </>
-              ) : (
-                <>
-                  <Copy className="h-3 w-3 mr-1" />
-                  Copy
-                </>
-              )}
-            </button>
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={copyToClipboard}
+                className="btn-secondary text-xs px-3 py-1 flex items-center"
+              >
+                {copied ? (
+                  <>
+                    <Check className="h-3 w-3 mr-1" />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3 w-3 mr-1" />
+                    Copy
+                  </>
+                )}
+              </button>
 
-            <button
-              onClick={generateQRCode}
-              className="btn-secondary text-xs px-3 py-1 flex items-center"
-            >
-              <QrCode className="h-3 w-3 mr-1" />
-              QR
-            </button>
+              <button
+                onClick={generateQRCode}
+                className="btn-secondary text-xs px-3 py-1 flex items-center"
+              >
+                <QrCode className="h-3 w-3 mr-1" />
+                QR
+              </button>
 
-            <button
-              onClick={sendEmail}
-              className="btn-secondary text-xs px-3 py-1 flex items-center"
-            >
-              <Mail className="h-3 w-3 mr-1" />
-              Email
-            </button>
+              <button
+                onClick={sendEmail}
+                className="btn-secondary text-xs px-3 py-1 flex items-center"
+              >
+                <Mail className="h-3 w-3 mr-1" />
+                Email
+              </button>
 
               <a
                 href={shareUrl}
@@ -394,15 +397,16 @@ export default function PreviewPaste() {
                 New Paste
               </a>
             </div>
+          </div>
         </div>
       </div>
 
       {/* Main Text Area - Full screen height */}
       <div className="flex-1 bg-base flex">
-        <div className="flex-1 flex p-4">
+        <div className="flex-1 flex p-2 sm:p-4">
           {paste?.content_type === 'markdown' ? (
             <div 
-              className="flex-1 bg-surface0 text-text p-6 rounded-lg border border-mauve overflow-auto"
+              className="flex-1 bg-surface0 text-text p-3 sm:p-6 rounded-lg border border-mauve overflow-auto"
               dangerouslySetInnerHTML={{ 
                 __html: parseMarkdown(previewContent)
               }}
@@ -411,7 +415,7 @@ export default function PreviewPaste() {
             <textarea
               value={previewContent}
               readOnly
-              className="flex-1 bg-surface0 text-text p-6 resize-none focus:outline-none rounded-lg border border-mauve"
+              className="flex-1 bg-surface0 text-text p-3 sm:p-6 resize-none focus:outline-none rounded-lg border border-mauve"
             />
           )}
         </div>
@@ -419,7 +423,7 @@ export default function PreviewPaste() {
 
       {/* QR Code Display */}
       {showQR && (
-        <div className="bg-surface0 border-t border-surface2 px-6 py-4 flex-shrink-0">
+        <div className="bg-surface0 border-t border-surface2 px-4 sm:px-6 py-4 flex-shrink-0">
           <div className="bg-blue/20 border border-blue rounded-lg p-4 text-center">
             <h3 className="text-lg font-semibold text-blue mb-4">QR Code</h3>
             <div className="bg-white p-4 rounded-lg inline-block">
@@ -437,9 +441,9 @@ export default function PreviewPaste() {
       )}
 
       {/* Footer */}
-      <div className="bg-surface0 border-t border-surface2 px-6 py-4 flex-shrink-0">
-        <div className="flex items-center justify-between text-sm text-overlay1">
-          <div className="flex items-center space-x-4">
+      <div className="bg-surface0 border-t border-surface2 px-4 sm:px-6 py-4 flex-shrink-0">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm text-overlay1 space-y-2 sm:space-y-0">
+          <div className="flex items-center">
             <span>🗝️ KOPY - Because ignorance is bliss</span>
           </div>
           <div className="flex items-center space-x-4">
@@ -451,6 +455,7 @@ export default function PreviewPaste() {
             >
               Made with ❤️ by http.param
             </a>
+            <span className="hidden sm:inline">•</span>
             <a
               href="https://github.com/httpparam/kopy"
               target="_blank"
