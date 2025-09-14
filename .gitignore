@@ -13,6 +13,8 @@
 # Production
 /build
 
+.test-api.js
+
 # Misc
 .DS_Store
 *.pem
