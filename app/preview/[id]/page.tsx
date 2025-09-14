@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { Shield, Clock, AlertCircle, Copy, Check } from 'lucide-react'
-import { decrypt, verifyPassword } from '@/lib/encryption'
+import { Copy, QrCode, Mail, Check, Eye, Clock, User } from 'lucide-react'
+import { decrypt } from '@/lib/encryption'
 import { supabase } from '@/lib/supabase'
 
 interface PasteData {
@@ -16,18 +16,16 @@ interface PasteData {
   expires_at: string
 }
 
-export default function ViewPaste() {
+export default function PreviewPaste() {
   const params = useParams()
   const [paste, setPaste] = useState<PasteData | null>(null)
-  const [decryptedContent, setDecryptedContent] = useState('')
+  const [previewContent, setPreviewContent] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
-  const [timeLeft, setTimeLeft] = useState('')
   const [copied, setCopied] = useState(false)
-  const [password, setPassword] = useState('')
-  const [passwordError, setPasswordError] = useState('')
-  const [isPasswordProtected, setIsPasswordProtected] = useState(false)
-  const [isPasswordVerified, setIsPasswordVerified] = useState(false)
+  const [showQR, setShowQR] = useState(false)
+  const [timeLeft, setTimeLeft] = useState('')
+  const [shareUrl, setShareUrl] = useState('')
 
   useEffect(() => {
     const fetchPaste = async () => {
@@ -42,106 +40,60 @@ export default function ViewPaste() {
         }
 
         const decryptionKey = decodeURIComponent(hash)
+        setShareUrl(`${window.location.origin}/view/${pasteId}#${encodeURIComponent(decryptionKey)}`)
 
-        // Fetch paste data using the custom function
+        // Fetch paste data
         const { data, error: fetchError } = await supabase
-          .rpc('get_paste_if_valid', { paste_id: pasteId })
+          .from('pastes')
+          .select('*')
+          .eq('id', pasteId)
+          .gt('expires_at', new Date().toISOString())
+          .single()
 
         if (fetchError) {
           throw fetchError
         }
 
-        if (!data || data.length === 0) {
-          setError('Paste not found or has expired')
+        if (!data) {
+          setError('Paste not found or expired')
           setIsLoading(false)
           return
         }
 
-        const pasteData = data[0] as PasteData
-        setPaste(pasteData)
+        setPaste(data)
 
-        // Debug logging
-        console.log('Paste data:', pasteData)
-        console.log('Password hash:', pasteData.password_hash)
-
-        // Calculate time left FIRST (for both password protected and non-protected pastes)
-        const expiresAt = new Date(pasteData.expires_at)
-        const now = new Date()
-        const timeDiff = expiresAt.getTime() - now.getTime()
-
-        console.log('Time calculation:', {
-          expiresAt: expiresAt.toISOString(),
-          now: now.toISOString(),
-          timeDiff: timeDiff,
-          timeDiffMinutes: Math.floor(timeDiff / 60000)
-        })
-
-        if (timeDiff <= 0) {
-          setError('This paste has expired')
-          setIsLoading(false)
-          return
-        }
-
-        // Set up time interval for ALL pastes (password protected or not)
-        const updateTimeLeft = () => {
-          const now = new Date()
-          const timeDiff = expiresAt.getTime() - now.getTime()
-          
-          if (timeDiff <= 0) {
-            setError('This paste has expired')
-            setTimeLeft('0m 0s')
-            return
-          }
-
-          const totalMinutes = Math.floor(timeDiff / 60000)
-          const seconds = Math.floor((timeDiff % 60000) / 1000)
-          
-          let timeString
-          if (totalMinutes >= 60) {
-            const hours = Math.floor(totalMinutes / 60)
-            const minutes = totalMinutes % 60
-            timeString = `${hours}h ${minutes}m ${seconds}s`
-          } else {
-            timeString = `${totalMinutes}m ${seconds}s`
-          }
-          
-          console.log('Setting time left:', timeString)
-          setTimeLeft(timeString)
-        }
-
-        // Set initial time
-        updateTimeLeft()
-        
-        // Set up interval for updates
-        const interval = setInterval(updateTimeLeft, 1000)
-
-        // Check if password protected
-        if (pasteData.password_hash) {
-          console.log('Paste is password protected')
-          setIsPasswordProtected(true)
-          setIsLoading(false)
-          return
-        }
-
-        // Decrypt the content if not password protected
+        // Decrypt content for preview (full content)
         try {
-          const decrypted = decrypt(pasteData.encrypted_content, decryptionKey)
-          setDecryptedContent(decrypted)
-          setIsPasswordVerified(true) // This is correct for non-password protected pastes
+          const fullContent = await decrypt(data.encrypted_content, decryptionKey)
+          setPreviewContent(fullContent)
         } catch (decryptError) {
-          setError('Failed to decrypt content. The link may be corrupted.')
+          setError('Failed to decrypt content')
           setIsLoading(false)
           return
+        }
+
+        // Calculate time left
+        const expiresAt = new Date(data.expires_at)
+        const now = new Date()
+        const diffMs = expiresAt.getTime() - now.getTime()
+        
+        if (diffMs <= 0) {
+          setTimeLeft('Expired')
+        } else {
+          const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+          const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
+          
+          if (diffHours > 0) {
+            setTimeLeft(`${diffHours}h ${diffMinutes}m`)
+          } else {
+            setTimeLeft(`${diffMinutes}m`)
+          }
         }
 
         setIsLoading(false)
-
-        // Cleanup interval on unmount
-        return () => clearInterval(interval)
-
-      } catch (err) {
-        console.error('Error fetching paste:', err)
-        setError('Failed to load paste. Please check the link and try again.')
+      } catch (error) {
+        console.error('Error fetching paste:', error)
+        setError('Failed to load paste')
         setIsLoading(false)
       }
     }
@@ -149,36 +101,25 @@ export default function ViewPaste() {
     fetchPaste()
   }, [params.id])
 
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!password.trim() || !paste) return
-
-    setPasswordError('')
-    
-    // Verify password
-    if (verifyPassword(password, paste.password_hash!)) {
-      try {
-        const hash = window.location.hash.substring(1)
-        const decryptionKey = decodeURIComponent(hash)
-        const decrypted = decrypt(paste.encrypted_content, decryptionKey)
-        setDecryptedContent(decrypted)
-        setIsPasswordVerified(true)
-      } catch (decryptError) {
-        setError('Failed to decrypt content. The link may be corrupted.')
-      }
-    } else {
-      setPasswordError('Incorrect password. Please try again.')
-    }
-  }
-
-  const copyContent = async () => {
+  const copyToClipboard = async () => {
     try {
-      await navigator.clipboard.writeText(decryptedContent)
+      await navigator.clipboard.writeText(shareUrl)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (error) {
       console.error('Failed to copy:', error)
     }
+  }
+
+  const generateQRCode = () => {
+    setShowQR(!showQR)
+  }
+
+  const sendEmail = () => {
+    const subject = encodeURIComponent('Secure Paste from KOPY')
+    const body = encodeURIComponent(`I've shared a secure paste with you:\n\n${shareUrl}\n\nThe content will be automatically deleted when it expires.`)
+    const mailtoLink = `mailto:?subject=${subject}&body=${body}`
+    window.open(mailtoLink)
   }
 
   const parseMarkdown = (text: string): string => {
@@ -282,8 +223,8 @@ export default function ViewPaste() {
         <div className="flex-1 bg-base flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-mauve mx-auto mb-4"></div>
-            <h2 className="text-xl font-semibold text-text mb-2">Loading your secure paste...</h2>
-            <p className="text-subtext1">Please wait while we decrypt your content.</p>
+            <h2 className="text-xl font-semibold text-text mb-2">Loading preview...</h2>
+            <p className="text-subtext1">Please wait while we prepare your paste preview.</p>
           </div>
         </div>
 
@@ -332,7 +273,6 @@ export default function ViewPaste() {
         {/* Error Content */}
         <div className="flex-1 bg-base flex items-center justify-center">
           <div className="text-center">
-            <AlertCircle className="h-12 w-12 text-red mx-auto mb-4" />
             <h2 className="text-2xl font-semibold text-text mb-2">Error</h2>
             <p className="text-subtext1 mb-6">{error}</p>
             <a
@@ -341,89 +281,6 @@ export default function ViewPaste() {
             >
               Create New Paste
             </a>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="bg-surface0 border-t border-surface2 px-6 py-4 flex-shrink-0">
-          <div className="flex items-center justify-between text-sm text-overlay1">
-            <div className="flex items-center space-x-4">
-              <span>🗝️ KOPY - Because ignorance is bliss</span>
-            </div>
-            <div className="flex items-center space-x-4">
-              <a
-                href="https://httpparam.me"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-text transition-colors"
-              >
-                Made with ❤️ by http.param
-              </a>
-              <a
-                href="https://github.com/httpparam/kopy"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-text transition-colors"
-              >
-                Source
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // Show password form if paste is password protected and not verified
-  if (isPasswordProtected && !isPasswordVerified) {
-    return (
-      <div className="min-h-screen bg-base flex flex-col">
-        {/* Top Control Bar */}
-        <div className="bg-surface0 border-b border-surface2 px-6 py-3 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <h1 className="text-xl font-bold text-text">🗝️ KOPY</h1>
-            </div>
-          </div>
-        </div>
-
-        {/* Password Form Content */}
-        <div className="flex-1 bg-base flex items-center justify-center">
-          <div className="card max-w-md mx-auto">
-            <div className="text-center mb-6">
-              <Shield className="h-12 w-12 text-blue mx-auto mb-4" />
-              <h1 className="text-2xl font-semibold text-text mb-2">Password Protected</h1>
-              <p className="text-subtext1">
-                This paste is protected with a password. Please enter the password to view the content.
-              </p>
-            </div>
-
-            <form onSubmit={handlePasswordSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-subtext1 mb-2">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  id="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter password..."
-                  className="input-field"
-                  required
-                />
-                {passwordError && (
-                  <p className="text-red text-sm mt-1">{passwordError}</p>
-                )}
-              </div>
-              
-              <button
-                type="submit"
-                className="btn-primary w-full"
-              >
-                Unlock Content
-              </button>
-            </form>
           </div>
         </div>
 
@@ -468,40 +325,75 @@ export default function ViewPaste() {
               <h1 className="text-xl font-bold text-text">🗝️ KOPY</h1>
             </div>
             
-            {/* Author Name */}
-            <div className="flex items-center space-x-2">
-              <span className="text-subtext1 text-sm">Author:</span>
-              <span className="text-text font-medium">
-                {paste?.sender_name || 'Anonymous'}
-              </span>
-            </div>
+            {/* Paste Info */}
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <User className="h-4 w-4 text-subtext1" />
+                <span className="text-subtext1 text-sm">Author:</span>
+                <span className="text-text font-medium">
+                  {paste?.sender_name || 'Anonymous'}
+                </span>
+              </div>
 
-            {/* Time Left Display */}
-            <div className="flex items-center space-x-2">
-              <Clock className="h-4 w-4 text-yellow" />
-              <span className="text-subtext1 text-sm">Expires:</span>
-              <span className="text-yellow font-medium">
-                {timeLeft || 'Calculating...'}
-              </span>
+              <div className="flex items-center space-x-2">
+                <Clock className="h-4 w-4 text-yellow" />
+                <span className="text-subtext1 text-sm">Expires:</span>
+                <span className="text-yellow font-medium">{timeLeft}</span>
+              </div>
             </div>
           </div>
 
-          <button
-            onClick={copyContent}
-            className="btn-secondary text-sm px-4 flex items-center"
-          >
-            {copied ? (
-              <>
-                <Check className="h-4 w-4 mr-2" />
-                Copied!
-              </>
-            ) : (
-              <>
-                <Copy className="h-4 w-4 mr-2" />
-                Copy
-              </>
-            )}
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={copyToClipboard}
+              className="btn-secondary text-xs px-3 py-1 flex items-center"
+            >
+              {copied ? (
+                <>
+                  <Check className="h-3 w-3 mr-1" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Copy className="h-3 w-3 mr-1" />
+                  Copy
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={generateQRCode}
+              className="btn-secondary text-xs px-3 py-1 flex items-center"
+            >
+              <QrCode className="h-3 w-3 mr-1" />
+              QR
+            </button>
+
+            <button
+              onClick={sendEmail}
+              className="btn-secondary text-xs px-3 py-1 flex items-center"
+            >
+              <Mail className="h-3 w-3 mr-1" />
+              Email
+            </button>
+
+              <a
+                href={shareUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-primary text-xs px-3 py-1 flex items-center"
+              >
+                <Eye className="h-3 w-3 mr-1" />
+                View
+              </a>
+
+              <a
+                href="/"
+                className="btn-primary text-xs px-3 py-1"
+              >
+                New Paste
+              </a>
+            </div>
         </div>
       </div>
 
@@ -512,12 +404,12 @@ export default function ViewPaste() {
             <div 
               className="flex-1 bg-surface0 text-text p-6 rounded-lg border border-mauve overflow-auto"
               dangerouslySetInnerHTML={{ 
-                __html: parseMarkdown(decryptedContent)
+                __html: parseMarkdown(previewContent)
               }}
             />
           ) : (
             <textarea
-              value={decryptedContent}
+              value={previewContent}
               readOnly
               className="flex-1 bg-surface0 text-text p-6 resize-none focus:outline-none rounded-lg border border-mauve"
             />
@@ -525,21 +417,30 @@ export default function ViewPaste() {
         </div>
       </div>
 
-      {/* Security Notice */}
-      <div className="bg-surface0 border-t border-surface2 px-6 py-4 flex-shrink-0">
-        <div className="bg-blue/20 border border-blue rounded-lg p-4">
-          <p className="text-sm text-blue">
-            <strong>Security Notice:</strong> This content is encrypted and will be automatically deleted when it expires. 
-            The decryption key is embedded in the URL and cannot be recovered.
-          </p>
+      {/* QR Code Display */}
+      {showQR && (
+        <div className="bg-surface0 border-t border-surface2 px-6 py-4 flex-shrink-0">
+          <div className="bg-blue/20 border border-blue rounded-lg p-4 text-center">
+            <h3 className="text-lg font-semibold text-blue mb-4">QR Code</h3>
+            <div className="bg-white p-4 rounded-lg inline-block">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shareUrl)}`}
+                alt="QR Code"
+                className="mx-auto"
+              />
+            </div>
+            <p className="text-sm text-blue mt-4">
+              Scan this QR code to quickly access the paste
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Footer */}
       <div className="bg-surface0 border-t border-surface2 px-6 py-4 flex-shrink-0">
         <div className="flex items-center justify-between text-sm text-overlay1">
           <div className="flex items-center space-x-4">
-            <span>Kopy - Because ignorance is bliss</span>
+            <span>🗝️ KOPY - Because ignorance is bliss</span>
           </div>
           <div className="flex items-center space-x-4">
             <a

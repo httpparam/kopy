@@ -2,9 +2,50 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Catppuccin Mocha Color Palette */
+:root {
+  --rosewater: #f5e0dc;
+  --flamingo: #f2cdcd;
+  --pink: #f5c2e7;
+  --mauve: #cba6f7;
+  --red: #f38ba8;
+  --maroon: #eba0ac;
+  --peach: #fab387;
+  --yellow: #f9e2af;
+  --green: #a6e3a1;
+  --teal: #94e2d5;
+  --sky: #89dceb;
+  --sapphire: #74c7ec;
+  --blue: #89b4fa;
+  --lavender: #b4befe;
+  --text: #cdd6f4;
+  --subtext1: #bac2de;
+  --subtext0: #a6adc8;
+  --overlay2: #9399b2;
+  --overlay1: #7f849c;
+  --overlay0: #6c7086;
+  --surface2: #585b70;
+  --surface1: #45475a;
+  --surface0: #313244;
+  --base: #1e1e2e;
+  --mantle: #181825;
+  --crust: #11111b;
+}
+
 @layer base {
   html {
     font-family: system-ui, sans-serif;
+  }
+  
+  body {
+    @apply text-text;
+    background-color: #1e1e2e; /* Catppuccin Mocha Base */
+    background-image: 
+      radial-gradient(circle at 1px 1px, rgba(205,214,244,0.08) 1px, transparent 0),
+      radial-gradient(circle at 3px 3px, rgba(205,214,244,0.05) 1px, transparent 0),
+      radial-gradient(circle at 5px 5px, rgba(205,214,244,0.03) 1px, transparent 0);
+    background-size: 20px 20px, 40px 40px, 60px 60px;
+    background-position: 0 0, 10px 10px, 20px 20px;
   }
 }
 
@@ -17,22 +58,22 @@
 
 @layer components {
   .btn-primary {
-    @apply bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+    @apply bg-mauve hover:bg-mauve/80 text-base font-medium py-2 px-4 rounded-lg transition-colors duration-200;
   }
   
   .btn-secondary {
-    @apply bg-gray-700 hover:bg-gray-600 text-gray-200 font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+    @apply bg-surface1 hover:bg-surface2 text-text font-medium py-2 px-4 rounded-lg transition-colors duration-200;
   }
   
   .input-field {
-    @apply w-full px-3 py-2 bg-transparent border border-gray-600 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400;
+    @apply w-full px-3 py-2 bg-surface0 border border-surface2 text-text rounded-lg focus:outline-none focus:ring-2 focus:ring-mauve focus:border-transparent placeholder-overlay1;
   }
   
   .input-field option {
-    @apply bg-gray-800 text-white;
+    @apply bg-surface0 text-text;
   }
   
   .card {
-    @apply bg-transparent rounded-xl border border-gray-700 p-6;
+    @apply bg-transparent rounded-xl border border-surface2 p-6;
   }
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Lock, Copy, Check, Clock, Shield } from 'lucide-react'
+import { Lock, Copy, Check, Clock, Shield, Eye, QrCode, Mail } from 'lucide-react'
 import { encrypt, generateKey, generatePasteId, hashPassword } from '@/lib/encryption'
 import { supabase } from '@/lib/supabase'
 
@@ -14,6 +14,11 @@ export default function Home() {
   const [shareUrl, setShareUrl] = useState('')
   const [copied, setCopied] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'error'>('checking')
+  const [showPreview, setShowPreview] = useState(false)
+  const [showQR, setShowQR] = useState(false)
+  const [previewContent, setPreviewContent] = useState('')
+  const [contentType, setContentType] = useState<'text' | 'markdown'>('text')
+  const [viewMode, setViewMode] = useState<'edit' | 'preview'>('edit')
 
   // Test Supabase connection on component mount
   useEffect(() => {
@@ -64,6 +69,7 @@ export default function Home() {
           encrypted_content: encryptedContent,
           sender_name: senderName || null,
           password_hash: passwordHash,
+          content_type: contentType,
           expires_at: expiresAt
         })
 
@@ -72,6 +78,10 @@ export default function Home() {
       // Create shareable URL with encryption key
       const url = `${window.location.origin}/view/${pasteId}#${encodeURIComponent(key)}`
       setShareUrl(url)
+      
+      // Show preview with current content
+      setPreviewContent(content)
+      setShowPreview(true)
       
       // Clear the form
       setContent('')
@@ -97,186 +107,421 @@ export default function Home() {
     }
   }
 
+  const generateQRCode = () => {
+    setShowQR(!showQR)
+  }
+
+  const sendEmail = () => {
+    const subject = encodeURIComponent('Secure Paste from KOPY')
+    const body = encodeURIComponent(`I've shared a secure paste with you:\n\n${shareUrl}\n\nThe content will be automatically deleted when it expires.`)
+    const mailtoLink = `mailto:?subject=${subject}&body=${body}`
+    window.open(mailtoLink)
+  }
+
+  const createNewPaste = () => {
+    setShowPreview(false)
+    setShowQR(false)
+    setShareUrl('')
+    setPreviewContent('')
+    setViewMode('edit')
+    setContentType('text')
+  }
+
+  const parseMarkdown = (text: string): string => {
+    let html = text
+
+    // Code blocks (must be processed first to avoid conflicts)
+    html = html.replace(/```([\s\S]*?)```/g, '<pre class="bg-surface1 border border-surface2 rounded-lg p-4 my-4 overflow-x-auto"><code class="text-text font-mono text-sm">$1</code></pre>')
+    
+    // Inline code
+    html = html.replace(/`([^`]+)`/g, '<code class="bg-surface1 px-1 py-0.5 rounded text-sm font-mono">$1</code>')
+
+    // Headers
+    html = html.replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold mt-6 mb-3 text-text">$1</h3>')
+    html = html.replace(/^## (.*$)/gim, '<h2 class="text-xl font-semibold mt-6 mb-3 text-text">$1</h2>')
+    html = html.replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold mt-6 mb-4 text-text">$1</h1>')
+
+    // Horizontal rules
+    html = html.replace(/^---$/gim, '<hr class="border-surface2 my-6">')
+    html = html.replace(/^\*\*\*$/gim, '<hr class="border-surface2 my-6">')
+
+    // Blockquotes
+    html = html.replace(/^> (.*$)/gim, '<blockquote class="border-l-4 border-mauve pl-4 py-2 my-4 bg-surface1/50 italic text-subtext1">$1</blockquote>')
+
+    // Tables
+    html = html.replace(/\|(.+)\|\n\|[-\s|]+\|\n((?:\|.+\|\n?)*)/g, (match, header, rows) => {
+      const headerCells = header.split('|').map((cell: string) => 
+        `<th class="border border-surface2 px-3 py-2 bg-surface1 text-left font-semibold">${cell.trim()}</th>`
+      ).join('')
+      
+      const rowLines = rows.trim().split('\n')
+      const tableRows = rowLines.map((row: string) => {
+        const cells = row.split('|').map((cell: string) => 
+          `<td class="border border-surface2 px-3 py-2">${cell.trim()}</td>`
+        ).join('')
+        return `<tr>${cells}</tr>`
+      }).join('')
+      
+      return `<table class="border-collapse border border-surface2 my-4 w-full"><thead><tr>${headerCells}</tr></thead><tbody>${tableRows}</tbody></table>`
+    })
+
+    // Lists (ordered and unordered)
+    html = html.replace(/^(\d+\.\s.*(?:\n^  .*)*)/gim, (match) => {
+      const items = match.split('\n').map((line: string) => {
+        const content = line.replace(/^\d+\.\s/, '').replace(/^  /, '')
+        return `<li class="ml-4 my-1">${content}</li>`
+      }).join('')
+      return `<ol class="list-decimal list-inside my-4 space-y-1">${items}</ol>`
+    })
+
+    html = html.replace(/^([-*+]\s.*(?:\n^  .*)*)/gim, (match) => {
+      const items = match.split('\n').map((line: string) => {
+        const content = line.replace(/^[-*+]\s/, '').replace(/^  /, '')
+        return `<li class="ml-4 my-1">${content}</li>`
+      }).join('')
+      return `<ul class="list-disc list-inside my-4 space-y-1">${items}</ul>`
+    })
+
+    // Images
+    html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="max-w-full h-auto rounded-lg my-4 border border-surface2" />')
+
+    // Links
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue hover:text-sky underline">$1</a>')
+
+    // Strikethrough
+    html = html.replace(/~~(.*?)~~/g, '<del class="line-through text-subtext1">$1</del>')
+
+    // Bold and italic (order matters - bold first)
+    html = html.replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>')
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold">$1</strong>')
+    html = html.replace(/\*(.*?)\*/g, '<em class="italic">$1</em>')
+
+    // Underline (not standard markdown but useful)
+    html = html.replace(/__(.*?)__/g, '<u>$1</u>')
+
+    // Highlight (not standard markdown but useful)
+    html = html.replace(/==(.*?)==/g, '<mark class="bg-yellow/20 px-1 rounded">$1</mark>')
+
+    // Line breaks
+    html = html.replace(/\n\n/g, '</p><p class="my-2">')
+    html = html.replace(/\n/g, '<br>')
+
+    // Wrap in paragraph tags
+    html = `<p class="my-2">${html}</p>`
+
+    return html
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-8">
-      <div className="w-full max-w-4xl">
-        {/* Main Content Card */}
-        <div className="card">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-white mb-2">Kopy</h1>
-            <p className="text-gray-300">private encrypted pastebin</p>
-          </div>
-
-          {/* Connection Status */}
-          {connectionStatus === 'checking' && (
-            <div className="text-center mb-6">
-              <div className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-yellow-900/50 text-yellow-300 border border-yellow-700">
-                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-yellow-400 mr-2"></div>
-                Checking connection...
-              </div>
+    <div className="min-h-screen bg-base flex flex-col">
+      {/* Top Control Bar */}
+      <div className="bg-surface0 border-b border-surface2 px-6 py-3 flex-shrink-0">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-6">
+            {/* App Name */}
+            <div className="flex items-center space-x-2">
+              <h1 className="text-xl font-bold text-text">🗝️ KOPY</h1>
             </div>
-          )}
-          {connectionStatus === 'connected' && (
-            <div className="text-center mb-6">
-              <div className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-green-900/50 text-green-300 border border-green-700">
-                <div className="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
-                Connected to database
-              </div>
-            </div>
-          )}
-          {connectionStatus === 'error' && (
-            <div className="text-center mb-6">
-              <div className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-red-900/50 text-red-300 border border-red-700">
-                <div className="w-2 h-2 bg-red-400 rounded-full mr-2"></div>
-                Database connection failed
-              </div>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Text Input - Large square area */}
-            <div>
-              <label htmlFor="content" className="block text-sm font-medium text-gray-300 mb-2">
-                Text
-              </label>
-              <textarea
-                id="content"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="Paste your text here..."
-                className="input-field min-h-[300px] resize-none"
-                required
+            
+            {/* Author Name */}
+            <div className="flex items-center space-x-2">
+              <input
+                type="text"
+                value={senderName}
+                onChange={(e) => setSenderName(e.target.value)}
+                placeholder="Author (optional)"
+                className="input-field text-sm w-32"
               />
             </div>
 
-            {/* Bottom Row - Name, Time, Password */}
-            <div className="grid grid-cols-3 gap-4">
-              {/* Name Input */}
-              <div>
-                <label htmlFor="senderName" className="block text-sm font-medium text-gray-300 mb-2">
-                  name
-                </label>
-                <input
-                  type="text"
-                  id="senderName"
-                  value={senderName}
-                  onChange={(e) => setSenderName(e.target.value)}
-                  placeholder="Your name..."
-                  className="input-field"
-                />
-              </div>
-
-              {/* Time Dropdown */}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  time
-                </label>
-                <select
-                  value={expirationMinutes}
-                  onChange={(e) => setExpirationMinutes(Number(e.target.value))}
-                  className="input-field"
-                >
-                  <option value={10}>10 minutes</option>
-                  <option value={60}>1 hour</option>
-                  <option value={1440}>1 day</option>
-                  <option value={4320}>3 days</option>
-                  <option value={10080}>1 week</option>
-                </select>
-              </div>
-
-              {/* Password Input */}
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
-                  pass
-                </label>
-                <input
-                  type="password"
-                  id="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Password..."
-                  className="input-field"
-                />
-              </div>
+            {/* Time Dropdown */}
+            <div className="flex items-center space-x-2">
+              <span className="text-subtext1 text-sm">Expires:</span>
+              <select
+                value={expirationMinutes}
+                onChange={(e) => setExpirationMinutes(Number(e.target.value))}
+                className="input-field text-sm w-auto"
+              >
+                <option value={10}>10 minutes</option>
+                <option value={60}>1 hour</option>
+                <option value={1440}>1 day</option>
+                <option value={4320}>3 days</option>
+                <option value={10080}>1 week</option>
+              </select>
             </div>
 
-            {/* Copy Link Button */}
-            <div className="text-center">
-              <button
-                type="submit"
-                disabled={isLoading || !content.trim()}
-                className="btn-primary px-8 py-3 disabled:opacity-50 disabled:cursor-not-allowed"
+            {/* Password */}
+            <div className="flex items-center space-x-2">
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password (optional)"
+                className="input-field text-sm w-32"
+              />
+            </div>
+
+            {/* Content Type */}
+            <div className="flex items-center space-x-2">
+              <span className="text-subtext1 text-sm">Type:</span>
+              <select
+                value={contentType}
+                onChange={(e) => setContentType(e.target.value as 'text' | 'markdown')}
+                className="input-field text-sm w-auto"
               >
-                {isLoading ? (
+                <option value="text">Plain Text</option>
+                <option value="markdown">Markdown</option>
+              </select>
+            </div>
+
+          </div>
+
+          {showPreview ? (
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={copyToClipboard}
+                className="btn-secondary text-xs px-3 py-1 flex items-center"
+              >
+                {copied ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2 inline-block"></div>
-                    Encrypting...
+                    <Check className="h-3 w-3 mr-1" />
+                    Copied!
                   </>
                 ) : (
-                  'Copy link'
+                  <>
+                    <Copy className="h-3 w-3 mr-1" />
+                    Copy
+                  </>
                 )}
               </button>
-            </div>
-          </form>
 
-          {/* Share URL Display */}
-          {shareUrl && (
-            <div className="mt-8 p-4 rounded-lg border border-gray-700">
-              <div className="flex items-center justify-between">
-                <div className="flex-1 mr-4">
-                  <input
-                    type="text"
-                    value={shareUrl}
-                    readOnly
-                    className="input-field text-sm"
-                  />
-                </div>
-                <button
-                  onClick={copyToClipboard}
-                  className="btn-secondary flex items-center"
-                >
-                  {copied ? (
-                    <Check className="h-4 w-4" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
-              <p className="text-xs text-gray-400 mt-2">
-                Link expires in {expirationMinutes < 60 
-                  ? `${expirationMinutes} minutes` 
-                  : expirationMinutes < 1440 
-                    ? `${Math.round(expirationMinutes / 60)} hours`
-                    : `${Math.round(expirationMinutes / 1440)} days`
-                }
-                {password && " • Password protected"}
-              </p>
+              <button
+                onClick={generateQRCode}
+                className="btn-secondary text-xs px-3 py-1 flex items-center"
+              >
+                <QrCode className="h-3 w-3 mr-1" />
+                QR
+              </button>
+
+              <button
+                onClick={sendEmail}
+                className="btn-secondary text-xs px-3 py-1 flex items-center"
+              >
+                <Mail className="h-3 w-3 mr-1" />
+                Email
+              </button>
+
+              <a
+                href={shareUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-primary text-xs px-3 py-1 flex items-center"
+              >
+                <Eye className="h-3 w-3 mr-1" />
+                View
+              </a>
+
+              <button
+                onClick={createNewPaste}
+                className="btn-primary text-xs px-3 py-1"
+              >
+                New Paste
+              </button>
             </div>
+          ) : (
+            <button
+              type="submit"
+              form="paste-form"
+              disabled={isLoading || !content.trim()}
+              className="btn-primary text-sm px-6"
+            >
+              {isLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2 inline-block"></div>
+                  Creating...
+                </>
+              ) : (
+                'Create'
+              )}
+            </button>
           )}
         </div>
       </div>
 
+      {/* Connection Status */}
+      {connectionStatus === 'checking' && (
+        <div className="bg-yellow/20 border-b border-yellow px-6 py-2">
+          <div className="flex items-center">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow mr-2"></div>
+            <span className="text-yellow text-sm">Checking connection...</span>
+          </div>
+        </div>
+      )}
+      {connectionStatus === 'connected' && (
+        <div className="bg-green/20 border-b border-green px-6 py-2">
+          <div className="flex items-center">
+            <div className="w-2 h-2 bg-green rounded-full mr-2"></div>
+            <span className="text-green text-sm">Connected to database</span>
+          </div>
+        </div>
+      )}
+      {connectionStatus === 'error' && (
+        <div className="bg-red/20 border-b border-red px-6 py-2">
+          <div className="flex items-center">
+            <div className="w-2 h-2 bg-red rounded-full mr-2"></div>
+            <span className="text-red text-sm">Database connection failed</span>
+          </div>
+        </div>
+      )}
+
+ {/* View Mode Tabs */}
+ {!showPreview && (
+   <div className="bg-surface0 border-b border-surface2 px-6 py-2 flex-shrink-0">
+     <div className="flex items-center">
+       <div className="flex items-center space-x-1">
+         <button
+           onClick={() => setViewMode('edit')}
+           className={`px-4 py-2 text-sm rounded-full transition-colors ${
+             viewMode === 'edit' 
+               ? 'bg-mauve text-base' 
+               : 'bg-transparent text-subtext1 hover:text-text border border-surface2'
+           }`}
+         >
+           Edit
+         </button>
+         <button
+           onClick={() => setViewMode('preview')}
+           className={`px-4 py-2 text-sm rounded-full transition-colors ${
+             viewMode === 'preview' 
+               ? 'bg-mauve text-base' 
+               : 'bg-transparent text-subtext1 hover:text-text border border-surface2'
+           }`}
+         >
+           Preview
+         </button>
+       </div>
+     </div>
+   </div>
+ )}
+
+ {/* Main Text Area - Full screen height */}
+ <div className="flex-1 bg-base flex">
+   {showPreview ? (
+     <div className="flex-1 flex p-4">
+       {contentType === 'markdown' ? (
+         <div 
+           className="flex-1 bg-surface0 text-text p-6 rounded-lg border border-mauve overflow-auto"
+           dangerouslySetInnerHTML={{ 
+             __html: parseMarkdown(previewContent)
+           }}
+         />
+       ) : (
+         <textarea
+           value={previewContent}
+           readOnly
+           className="flex-1 bg-surface0 text-text p-6 resize-none focus:outline-none rounded-lg border border-mauve"
+         />
+       )}
+     </div>
+   ) : (
+     <form id="paste-form" onSubmit={handleSubmit} className="flex-1 flex p-4">
+       {viewMode === 'edit' ? (
+         <textarea
+           id="content"
+           value={content}
+           onChange={(e) => setContent(e.target.value)}
+           placeholder="Paste your text here..."
+           className="flex-1 bg-surface0 text-text p-6 resize-none focus:outline-none placeholder-overlay1 rounded-lg border border-mauve"
+           required
+         />
+       ) : (
+         <div className="flex-1 bg-surface0 text-text p-6 rounded-lg border border-mauve overflow-auto">
+           {contentType === 'markdown' ? (
+             <div 
+               className="prose prose-invert max-w-none"
+               dangerouslySetInnerHTML={{ 
+                 __html: parseMarkdown(content)
+               }}
+             />
+           ) : (
+             <pre className="whitespace-pre-wrap font-mono text-sm">{content}</pre>
+           )}
+         </div>
+       )}
+     </form>
+   )}
+ </div>
+
+
+
+      {/* Success Message */}
+      {shareUrl && !showPreview && (
+        <div className="bg-surface0 border-t border-surface2 p-6 flex-shrink-0">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center">
+              <Check className="h-5 w-5 text-green mr-2" />
+              <span className="text-green font-medium">Paste created successfully!</span>
+            </div>
+          </div>
+          <div className="p-3 bg-surface1 rounded text-sm text-text font-mono break-all border border-surface2">
+            {shareUrl}
+          </div>
+          <p className="text-xs text-overlay1 mt-2">
+            Link expires in {expirationMinutes < 60 
+              ? `${expirationMinutes} minutes` 
+              : expirationMinutes < 1440 
+                ? `${Math.round(expirationMinutes / 60)} hours`
+                : `${Math.round(expirationMinutes / 1440)} days`
+            }
+            {password && " • Password protected"}
+          </p>
+        </div>
+      )}
+
+      {/* QR Code Display */}
+      {showQR && showPreview && (
+        <div className="bg-surface0 border-t border-surface2 px-6 py-4 flex-shrink-0">
+          <div className="bg-blue/20 border border-blue rounded-lg p-4 text-center">
+            <h3 className="text-lg font-semibold text-blue mb-4">QR Code</h3>
+            <div className="bg-white p-4 rounded-lg inline-block">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shareUrl)}`}
+                alt="QR Code"
+                className="mx-auto"
+              />
+            </div>
+            <p className="text-sm text-blue mt-4">
+              Scan this QR code to quickly access the paste
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Footer */}
-      <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 text-center px-4 w-full max-w-xs sm:max-w-none">
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-4 text-xs sm:text-sm text-gray-400">
-          <a
-            href="https://httpparam.me"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-gray-300 transition-colors whitespace-nowrap"
-          >
-            Made with 🩵 by http.param
-          </a>
-          <span className="hidden sm:inline text-gray-600">•</span>
-          <a
-            href="https://github.com/httpparam/kopy"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-gray-300 transition-colors whitespace-nowrap"
-          >
-            Source
-          </a>
+      <div className="bg-surface0 border-t border-surface2 px-6 py-4 flex-shrink-0">
+        <div className="flex items-center justify-between text-sm text-overlay1">
+          <div className="flex items-center space-x-4">
+            <span>🗝️ KOPY - Because ignorance is bliss</span>
+          </div>
+          <div className="flex items-center space-x-4">
+            <a
+              href="https://httpparam.me"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-gray-300 transition-colors"
+            >
+              Made with 🩵 by http.param
+            </a>
+            <span>•</span>
+            <a
+              href="https://github.com/httpparam/kopy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-gray-300 transition-colors"
+            >
+              Source
+            </a>
+          </div>
         </div>
       </div>
     </div>
