@@ -103,46 +103,67 @@ export default function PreviewPaste() {
     try {
       // Try modern Clipboard API first
       if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(shareUrl)
-        setCopied(true)
-        setTimeout(() => setCopied(false), 2000)
-      } else {
-        // Fallback for insecure contexts
+        try {
+          await navigator.clipboard.writeText(shareUrl)
+          setCopied(true)
+          setTimeout(() => setCopied(false), 2000)
+          return
+        } catch (clipboardError: any) {
+          // If clipboard API fails, fall through to fallback
+          if (clipboardError?.name !== 'SecurityError' && 
+              !clipboardError?.message?.includes('insecure')) {
+            console.warn('Clipboard API failed, using fallback:', clipboardError)
+          }
+        }
+      }
+      
+      // Fallback: Use execCommand only if we're in a context that might support it
+      if (document.queryCommandSupported && document.queryCommandSupported('copy')) {
         const textArea = document.createElement('textarea')
         textArea.value = shareUrl
         textArea.style.position = 'fixed'
         textArea.style.left = '-999999px'
         textArea.style.top = '-999999px'
+        textArea.setAttribute('readonly', '')
+        textArea.style.opacity = '0'
         document.body.appendChild(textArea)
         textArea.focus()
         textArea.select()
+        
         try {
-          document.execCommand('copy')
-          setCopied(true)
-          setTimeout(() => setCopied(false), 2000)
-        } catch (err) {
-          console.error('Fallback copy failed:', err)
-          alert('Failed to copy. Please copy manually: ' + shareUrl)
+          const success = document.execCommand('copy')
+          if (success) {
+            setCopied(true)
+            setTimeout(() => setCopied(false), 2000)
+          } else {
+            throw new Error('execCommand returned false')
+          }
+        } catch (err: any) {
+          // Silently handle expected security errors
+          if (err?.name === 'SecurityError' || 
+              err?.name === 'DOMException' ||
+              err?.message?.includes('insecure')) {
+            console.warn('Copy operation not allowed in this context')
+          } else {
+            console.error('Fallback copy failed:', err)
+          }
+          alert('Unable to copy automatically. Please copy manually: ' + shareUrl)
+        } finally {
+          if (document.body.contains(textArea)) {
+            document.body.removeChild(textArea)
+          }
         }
-        document.body.removeChild(textArea)
+      } else {
+        alert('Copy is not supported. Please copy manually: ' + shareUrl)
       }
-    } catch (error) {
-      console.error('Failed to copy:', error)
-      // Fallback to execCommand
-      const textArea = document.createElement('textarea')
-      textArea.value = shareUrl
-      textArea.style.position = 'fixed'
-      textArea.style.left = '-999999px'
-      document.body.appendChild(textArea)
-      textArea.select()
-      try {
-        document.execCommand('copy')
-        setCopied(true)
-        setTimeout(() => setCopied(false), 2000)
-      } catch (err) {
-        alert('Failed to copy. Please copy manually: ' + shareUrl)
+    } catch (error: any) {
+      // Catch any other unexpected errors
+      if (error?.name !== 'SecurityError' && 
+          error?.name !== 'DOMException' &&
+          !error?.message?.includes('insecure')) {
+        console.error('Unexpected copy error:', error)
       }
-      document.body.removeChild(textArea)
+      alert('Unable to copy. Please copy manually: ' + shareUrl)
     }
   }
 
