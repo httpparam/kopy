@@ -60,7 +60,32 @@ export async function POST(request: NextRequest) {
     }
 
     // Create shareable URL with encryption key
-    const baseUrl = request.nextUrl.origin
+    // Try to get the base URL from environment variable first, then from headers, then fallback to nextUrl
+    const getBaseUrl = () => {
+      // Use environment variable if set
+      if (process.env.NEXT_PUBLIC_BASE_URL) {
+        return process.env.NEXT_PUBLIC_BASE_URL
+      }
+      
+      // Try to get from forwarded headers (for reverse proxy)
+      const forwardedHost = request.headers.get('x-forwarded-host')
+      const forwardedProto = request.headers.get('x-forwarded-proto') || 'https'
+      if (forwardedHost) {
+        return `${forwardedProto}://${forwardedHost}`
+      }
+      
+      // Try to get from host header
+      const host = request.headers.get('host')
+      if (host) {
+        const proto = request.headers.get('x-forwarded-proto') || 'https'
+        return `${proto}://${host}`
+      }
+      
+      // Fallback to nextUrl (might be localhost)
+      return request.nextUrl.origin
+    }
+    
+    const baseUrl = getBaseUrl()
     const url = `${baseUrl}/view/${pasteId}#${encodeURIComponent(key)}`
 
     return NextResponse.json({
