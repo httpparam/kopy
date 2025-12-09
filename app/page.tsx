@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Lock, Copy, Check, Clock, Shield, Eye, QrCode, Mail } from 'lucide-react'
-import { encrypt, generateKey, generatePasteId, hashPassword } from '@/lib/encryption'
-import { supabase } from '@/lib/supabase'
+// Encryption is handled server-side via API route
 
 export default function Home() {
   const [content, setContent] = useState('')
@@ -20,15 +19,18 @@ export default function Home() {
   const [contentType, setContentType] = useState<'text' | 'markdown'>('text')
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>('edit')
 
-  // Test Supabase connection on component mount
+  // Test database connection on component mount
   useEffect(() => {
     const testConnection = async () => {
       try {
-        const { data, error } = await supabase.from('pastes').select('count').limit(1)
-        if (error) throw error
-        setConnectionStatus('connected')
+        const response = await fetch('/api/health')
+        if (response.ok) {
+          setConnectionStatus('connected')
+        } else {
+          throw new Error('Connection test failed')
+        }
       } catch (error) {
-        console.error('Supabase connection test failed:', error)
+        console.error('Database connection test failed:', error)
         setConnectionStatus('error')
       }
     }
@@ -41,43 +43,28 @@ export default function Home() {
 
     setIsLoading(true)
     try {
-      // Generate encryption key and encrypt content
-      const key = generateKey()
-      const encryptedContent = encrypt(content, key)
-      
-      // Generate unique paste ID
-      const pasteId = generatePasteId()
-      
-      // Calculate expiration time based on selected duration
-      const expiresAt = new Date(Date.now() + expirationMinutes * 60 * 1000).toISOString()
-      
-      // Hash password if provided
-      const passwordHash = password ? hashPassword(password) : null
-      
-      // Debug logging
-      console.log('Creating paste with:', {
-        hasPassword: !!password,
-        passwordHash: passwordHash,
-        senderName: senderName
+      // Store in database via API route (encryption happens on server)
+      const formData = new FormData()
+      formData.append('content', content)
+      formData.append('senderName', senderName)
+      formData.append('password', password)
+      formData.append('expirationMinutes', expirationMinutes.toString())
+      formData.append('contentType', contentType)
+
+      const response = await fetch('/api/post', {
+        method: 'POST',
+        body: formData
       })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to create paste')
+      }
+
+      const result = await response.json()
       
-      // Store in Supabase
-      const { error } = await supabase
-        .from('pastes')
-        .insert({
-          id: pasteId,
-          encrypted_content: encryptedContent,
-          sender_name: senderName || null,
-          password_hash: passwordHash,
-          content_type: contentType,
-          expires_at: expiresAt
-        })
-
-      if (error) throw error
-
-      // Create shareable URL with encryption key
-      const url = `${window.location.origin}/view/${pasteId}#${encodeURIComponent(key)}`
-      setShareUrl(url)
+      // Use the URL returned from the API
+      setShareUrl(result.url)
       
       // Show preview with current content
       setPreviewContent(content)
@@ -91,7 +78,7 @@ export default function Home() {
     } catch (error) {
       console.error('Error creating paste:', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
-      alert(`Failed to create paste: ${errorMessage}\n\nPlease check:\n1. Your Supabase credentials in .env.local\n2. Database schema is set up correctly\n3. Network connection`)
+      alert(`Failed to create paste: ${errorMessage}\n\nPlease check:\n1. Your database credentials in .env.local\n2. Database schema is set up correctly\n3. Network connection`)
     } finally {
       setIsLoading(false)
     }

@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { Shield, Clock, AlertCircle, Copy, Check } from 'lucide-react'
 import { decrypt, verifyPassword } from '@/lib/encryption'
-import { supabase } from '@/lib/supabase'
 
 interface PasteData {
   id: string
@@ -43,21 +42,20 @@ export default function ViewPaste() {
 
         const decryptionKey = decodeURIComponent(hash)
 
-        // Fetch paste data using the custom function
-        const { data, error: fetchError } = await supabase
-          .rpc('get_paste_if_valid', { paste_id: pasteId })
-
-        if (fetchError) {
-          throw fetchError
-        }
-
-        if (!data || data.length === 0) {
-          setError('Paste not found or has expired')
+        // Fetch paste data using API route
+        const response = await fetch(`/api/paste/${pasteId}`)
+        
+        if (!response.ok) {
+          if (response.status === 404) {
+            setError('Paste not found or has expired')
+          } else {
+            setError('Failed to load paste')
+          }
           setIsLoading(false)
           return
         }
 
-        const pasteData = data[0] as PasteData
+        const pasteData = await response.json() as PasteData
         setPaste(pasteData)
 
         // Debug logging

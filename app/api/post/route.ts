@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { encrypt, generateKey, generatePasteId, hashPassword } from '@/lib/encryption'
-import { supabase } from '@/lib/supabase'
+import { insertPaste } from '@/lib/db'
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,10 +41,9 @@ export async function POST(request: NextRequest) {
     // Hash password if provided
     const passwordHash = password ? hashPassword(password) : null
     
-    // Store in Supabase
-    const { error } = await supabase
-      .from('pastes')
-      .insert({
+    // Store in PostgreSQL
+    try {
+      await insertPaste({
         id: pasteId,
         encrypted_content: encryptedContent,
         sender_name: senderName || null,
@@ -52,9 +51,8 @@ export async function POST(request: NextRequest) {
         content_type: contentType,
         expires_at: expiresAt
       })
-
-    if (error) {
-      console.error('Supabase error:', error)
+    } catch (error) {
+      console.error('Database error:', error)
       return NextResponse.json(
         { error: 'Failed to save paste to database' },
         { status: 500 }

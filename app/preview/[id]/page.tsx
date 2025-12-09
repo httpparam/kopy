@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { Copy, QrCode, Mail, Check, Eye, Clock, User } from 'lucide-react'
 import { decrypt } from '@/lib/encryption'
-import { supabase } from '@/lib/supabase'
 
 interface PasteData {
   id: string
@@ -42,24 +41,20 @@ export default function PreviewPaste() {
         const decryptionKey = decodeURIComponent(hash)
         setShareUrl(`${window.location.origin}/view/${pasteId}#${encodeURIComponent(decryptionKey)}`)
 
-        // Fetch paste data
-        const { data, error: fetchError } = await supabase
-          .from('pastes')
-          .select('*')
-          .eq('id', pasteId)
-          .gt('expires_at', new Date().toISOString())
-          .single()
-
-        if (fetchError) {
-          throw fetchError
-        }
-
-        if (!data) {
-          setError('Paste not found or expired')
+        // Fetch paste data using API route
+        const response = await fetch(`/api/paste/${pasteId}`)
+        
+        if (!response.ok) {
+          if (response.status === 404) {
+            setError('Paste not found or expired')
+          } else {
+            setError('Failed to load paste')
+          }
           setIsLoading(false)
           return
         }
 
+        const data = await response.json() as PasteData
         setPaste(data)
 
         // Decrypt content for preview (full content)

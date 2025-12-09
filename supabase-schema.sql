@@ -12,18 +12,7 @@ CREATE TABLE IF NOT EXISTS pastes (
 -- Create an index on expires_at for efficient cleanup
 CREATE INDEX IF NOT EXISTS idx_pastes_expires_at ON pastes(expires_at);
 
--- Enable Row Level Security
-ALTER TABLE pastes ENABLE ROW LEVEL SECURITY;
-
--- Create a policy that allows anyone to insert pastes
-CREATE POLICY "Allow anyone to insert pastes" ON pastes
-  FOR INSERT WITH CHECK (true);
-
--- Create a policy that allows anyone to read pastes (for viewing shared content)
-CREATE POLICY "Allow anyone to read pastes" ON pastes
-  FOR SELECT USING (true);
-
--- Create a function to auimage.pngtomatically delete expired pastes
+-- Create a function to automatically delete expired pastes
 CREATE OR REPLACE FUNCTION delete_expired_pastes()
 RETURNS void AS $$
 BEGIN
