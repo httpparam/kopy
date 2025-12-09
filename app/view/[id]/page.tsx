@@ -171,11 +171,48 @@ export default function ViewPaste() {
 
   const copyContent = async () => {
     try {
-      await navigator.clipboard.writeText(decryptedContent)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      // Try modern Clipboard API first
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(decryptedContent)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      } else {
+        // Fallback for insecure contexts
+        const textArea = document.createElement('textarea')
+        textArea.value = decryptedContent
+        textArea.style.position = 'fixed'
+        textArea.style.left = '-999999px'
+        textArea.style.top = '-999999px'
+        document.body.appendChild(textArea)
+        textArea.focus()
+        textArea.select()
+        try {
+          document.execCommand('copy')
+          setCopied(true)
+          setTimeout(() => setCopied(false), 2000)
+        } catch (err) {
+          console.error('Fallback copy failed:', err)
+          alert('Failed to copy. Please select and copy manually.')
+        }
+        document.body.removeChild(textArea)
+      }
     } catch (error) {
       console.error('Failed to copy:', error)
+      // Fallback to execCommand
+      const textArea = document.createElement('textarea')
+      textArea.value = decryptedContent
+      textArea.style.position = 'fixed'
+      textArea.style.left = '-999999px'
+      document.body.appendChild(textArea)
+      textArea.select()
+      try {
+        document.execCommand('copy')
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      } catch (err) {
+        alert('Failed to copy. Please select and copy manually.')
+      }
+      document.body.removeChild(textArea)
     }
   }
 
