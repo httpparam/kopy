@@ -30,6 +30,9 @@ export default function ViewPaste() {
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
+    // Ensure we're on the client side
+    if (typeof window === 'undefined') return
+    
     const fetchPaste = async () => {
       try {
         const pasteId = params.id as string

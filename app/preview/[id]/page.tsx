@@ -27,6 +27,9 @@ export default function PreviewPaste() {
   const [shareUrl, setShareUrl] = useState('')
 
   useEffect(() => {
+    // Ensure we're on the client side
+    if (typeof window === 'undefined') return
+    
     const fetchPaste = async () => {
       try {
         const pasteId = params.id as string

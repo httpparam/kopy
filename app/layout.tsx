@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import { GeistMono } from 'geist/font/mono'
 import './globals.css'
+import { ErrorBoundary } from './error-boundary'
+import { ClientWrapper } from './client-wrapper'
 
 export const metadata: Metadata = {
   title: 'Kopy',
@@ -20,9 +22,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={GeistMono.className}>
-        <div className="min-h-screen bg-black sandpaper-texture">
-          {children}
-        </div>
+        <ErrorBoundary>
+          <ClientWrapper>
+            <div className="min-h-screen bg-black sandpaper-texture">
+              {children}
+            </div>
+          </ClientWrapper>
+        </ErrorBoundary>
       </body>
     </html>
   )
