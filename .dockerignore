@@ -1,0 +1,12 @@
+node_modules
+.next
+.env
+.env.local
+.git
+.gitignore
+*.log
+.DS_Store
+prisma/migrations
+.vscode
+.idea
+

@@ -1,0 +1,29 @@
+FROM node:20-alpine
+
+# Install system deps required by Prisma (OpenSSL) and glibc compatibility
+RUN apk add --no-cache libc6-compat openssl libssl3
+
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json pnpm-lock.yaml* ./
+
+# Install dependencies
+RUN pnpm install
+
+# Copy the rest of the application
+COPY . .
+
+# Generate Prisma Client
+RUN pnpm prisma:generate
+
+EXPOSE 3000
+
+ENV PORT 3000
+ENV HOSTNAME "0.0.0.0"
+
+CMD ["pnpm", "dev"]
+

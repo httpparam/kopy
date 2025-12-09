@@ -1,0 +1,24 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Paste {
+  id                String   @id
+  encrypted_content String   @db.Text
+  sender_name       String?  @db.Text
+  password_hash     String?  @db.Text
+  content_type      String   @default("text") @db.Text
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+  expires_at        DateTime @db.Timestamptz(6)
+
+  @@index([expires_at], name: "idx_pastes_expires_at")
+  @@map("pastes")
+}

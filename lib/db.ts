@@ -1,45 +1,70 @@
-import { Pool } from 'pg'
+import { PrismaClient } from '@prisma/client'
 
-// Create a connection pool
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+// PrismaClient is attached to the `global` object in development to prevent
+// exhausting your database connection limit.
+// Learn more: https://pris.ly/d/help/nextjs-best-practices
+
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined
+}
+
+export const prisma = globalForPrisma.prisma ?? new PrismaClient({
+  log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
 })
 
-// Export the pool for direct queries if needed
-export { pool }
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
-// Interface for PasteData
+// Interface for PasteData (matches Prisma model)
 export interface PasteData {
   id: string
   encrypted_content: string
-  sender_name?: string
-  password_hash?: string
-  content_type?: string
-  created_at: string
-  expires_at: string
+  sender_name?: string | null
+  password_hash?: string | null
+  content_type: string
+  created_at: Date | string
+  expires_at: Date | string
 }
 
 // Helper function to get a paste by ID (with expiration check)
 export async function getPasteIfValid(pasteId: string): Promise<PasteData | null> {
-  const client = await pool.connect()
   try {
     // First, clean up expired pastes
-    await client.query('SELECT delete_expired_pastes()')
+    const now = new Date()
+    await prisma.paste.deleteMany({
+      where: {
+        expires_at: {
+          lt: now
+        }
+      }
+    })
     
     // Then get the paste if it exists and is not expired
-    const result = await client.query(
-      'SELECT * FROM get_paste_if_valid($1)',
-      [pasteId]
-    )
+    const paste = await prisma.paste.findFirst({
+      where: {
+        id: pasteId,
+        expires_at: {
+          gt: now
+        }
+      }
+    })
     
-    if (result.rows.length === 0) {
+    if (!paste) {
       return null
     }
     
-    return result.rows[0] as PasteData
-  } finally {
-    client.release()
+    // Convert Date objects to ISO strings for consistency
+    return {
+      id: paste.id,
+      encrypted_content: paste.encrypted_content,
+      sender_name: paste.sender_name,
+      password_hash: paste.password_hash,
+      content_type: paste.content_type,
+      created_at: paste.created_at instanceof Date ? paste.created_at.toISOString() : paste.created_at,
+      expires_at: paste.expires_at instanceof Date ? paste.expires_at.toISOString() : paste.expires_at,
+    }
+  } catch (error) {
+    console.error('Error fetching paste:', error)
+    return null
   }
 }
 
@@ -52,38 +77,25 @@ export async function insertPaste(paste: {
   content_type: string
   expires_at: string
 }): Promise<void> {
-  const client = await pool.connect()
-  try {
-    await client.query(
-      `INSERT INTO pastes (id, encrypted_content, sender_name, password_hash, content_type, expires_at)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [
-        paste.id,
-        paste.encrypted_content,
-        paste.sender_name || null,
-        paste.password_hash || null,
-        paste.content_type,
-        paste.expires_at
-      ]
-    )
-  } finally {
-    client.release()
-  }
+  await prisma.paste.create({
+    data: {
+      id: paste.id,
+      encrypted_content: paste.encrypted_content,
+      sender_name: paste.sender_name,
+      password_hash: paste.password_hash,
+      content_type: paste.content_type,
+      expires_at: new Date(paste.expires_at),
+    },
+  })
 }
 
 // Helper function to test database connection
 export async function testConnection(): Promise<boolean> {
   try {
-    const client = await pool.connect()
-    await client.query('SELECT 1')
-    client.release()
+    await prisma.$queryRaw`SELECT 1`
     return true
   } catch (error) {
     console.error('Database connection test failed:', error)
     return false
   }
 }
-
-
-
-

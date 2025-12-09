@@ -25,7 +25,7 @@ export default function Home() {
       try {
         const response = await fetch('/api/health')
         if (response.ok) {
-          setConnectionStatus('connected')
+        setConnectionStatus('connected')
         } else {
           throw new Error('Connection test failed')
         }

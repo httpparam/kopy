@@ -130,3 +130,4 @@ temp/
 *.njsproj
 *.sln
 *.sw?
+/lib/generated/prisma

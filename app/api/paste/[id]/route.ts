@@ -15,15 +15,18 @@ export async function GET(
       )
     }
 
+    console.log('Fetching paste with ID:', pasteId)
     const paste = await getPasteIfValid(pasteId)
     
     if (!paste) {
+      console.log('Paste not found or expired:', pasteId)
       return NextResponse.json(
         { error: 'Paste not found or has expired' },
         { status: 404 }
       )
     }
 
+    console.log('Paste found:', paste.id)
     return NextResponse.json(paste)
   } catch (error) {
     console.error('Error fetching paste:', error)

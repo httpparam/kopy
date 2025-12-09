@@ -43,10 +43,10 @@ export default function PreviewPaste() {
 
         // Fetch paste data using API route
         const response = await fetch(`/api/paste/${pasteId}`)
-        
+
         if (!response.ok) {
           if (response.status === 404) {
-            setError('Paste not found or expired')
+          setError('Paste not found or expired')
           } else {
             setError('Failed to load paste')
           }
