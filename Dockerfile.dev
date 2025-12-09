@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:20.9-alpine
 
 # Install system deps required by Prisma (OpenSSL) and glibc compatibility
 RUN apk add --no-cache libc6-compat openssl libssl3
