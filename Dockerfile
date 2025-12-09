@@ -37,15 +37,22 @@ RUN pnpm prisma:generate
 COPY . .
 
 # Build Next.js
-ENV NEXT_TELEMETRY_DISABLED 1
+ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build
+
+# Helper stage to prepare Prisma files
+FROM builder AS prisma-files
+WORKDIR /app
+RUN mkdir -p /prisma-output && \
+    if [ -d "node_modules/.prisma" ]; then cp -r node_modules/.prisma /prisma-output/; fi && \
+    if [ -d "node_modules/@prisma" ]; then cp -r node_modules/@prisma /prisma-output/; fi
 
 # Production image, copy all the files and run next
 FROM base AS runner
 WORKDIR /app
 
-ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
@@ -53,20 +60,27 @@ RUN adduser --system --uid 1001 nextjs
 # Copy public assets
 COPY --from=builder /app/public ./public
 
-# Copy standalone output
+# Copy standalone output (this includes necessary node_modules)
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Copy Prisma files for runtime (needed for Prisma Client)
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+# Copy Prisma files from helper stage
+COPY --from=prisma-files /prisma-output /prisma-temp
+
+# Copy Prisma files if they exist and aren't already in standalone output
+RUN if [ ! -d "node_modules/.prisma" ] && [ -d "/prisma-temp/.prisma" ]; then \
+      mkdir -p node_modules && \
+      cp -r /prisma-temp/.prisma node_modules/ && \
+      cp -r /prisma-temp/@prisma node_modules/ && \
+      chown -R nextjs:nodejs node_modules/.prisma node_modules/@prisma; \
+    fi || true
 
 USER nextjs
 
 EXPOSE 3000
 
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
 
 CMD ["node", "server.js"]
 
