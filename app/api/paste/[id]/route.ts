@@ -3,10 +3,11 @@ import { getPasteIfValid } from '@/lib/db'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const pasteId = params.id
+    const { id } = await params
+    const pasteId = id
     
     if (!pasteId) {
       return NextResponse.json(
