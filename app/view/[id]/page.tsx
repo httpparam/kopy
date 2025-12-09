@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { Shield, Clock, AlertCircle, Copy, Check } from 'lucide-react'
 import { decrypt, verifyPassword } from '@/lib/encryption'
@@ -27,6 +27,7 @@ export default function ViewPaste() {
   const [passwordError, setPasswordError] = useState('')
   const [isPasswordProtected, setIsPasswordProtected] = useState(false)
   const [isPasswordVerified, setIsPasswordVerified] = useState(false)
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     const fetchPaste = async () => {
@@ -110,8 +111,8 @@ export default function ViewPaste() {
         // Set initial time
         updateTimeLeft()
         
-        // Set up interval for updates
-        const interval = setInterval(updateTimeLeft, 1000)
+        // Set up interval for updates and store in ref
+        intervalRef.current = setInterval(updateTimeLeft, 1000)
 
         // Check if password protected
         if (pasteData.password_hash) {
@@ -134,9 +135,6 @@ export default function ViewPaste() {
 
         setIsLoading(false)
 
-        // Cleanup interval on unmount
-        return () => clearInterval(interval)
-
       } catch (err) {
         console.error('Error fetching paste:', err)
         setError('Failed to load paste. Please check the link and try again.')
@@ -145,6 +143,14 @@ export default function ViewPaste() {
     }
 
     fetchPaste()
+
+    // Cleanup function - return from useEffect, not from inside async function
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
+    }
   }, [params.id])
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
