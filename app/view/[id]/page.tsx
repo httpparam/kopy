@@ -33,18 +33,34 @@ export default function ViewPaste() {
     // Ensure we're on the client side
     if (typeof window === 'undefined') return
     
+    // Add global error handler to catch unhandled DOMExceptions
+    const handleGlobalError = (event: ErrorEvent) => {
+      // Suppress DOMException errors related to insecure operations
+      if (event.error?.name === 'DOMException' && 
+          (event.error?.message?.toLowerCase().includes('insecure') ||
+           event.error?.message?.toLowerCase().includes('operation is insecure'))) {
+        event.preventDefault()
+        event.stopPropagation()
+        return false
+      }
+    }
+    
+    // Add unhandled rejection handler for Promise rejections
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      if (event.reason?.name === 'DOMException' && 
+          (event.reason?.message?.toLowerCase().includes('insecure') ||
+           event.reason?.message?.toLowerCase().includes('operation is insecure'))) {
+        event.preventDefault()
+      }
+    }
+    
+    window.addEventListener('error', handleGlobalError)
+    window.addEventListener('unhandledrejection', handleUnhandledRejection)
+    
     const fetchPaste = async () => {
       try {
         const pasteId = params.id as string
-        
-        let hash = ''
-        try {
-          if (typeof window !== 'undefined' && window.location && window.location.hash) {
-            hash = window.location.hash.substring(1) // Remove the #
-          }
-        } catch (e) {
-          console.warn('Failed to access window.location.hash:', e)
-        }
+        const hash = window.location.hash.substring(1) // Remove the #
         
         if (!hash) {
           setError('Invalid link: Missing decryption key')
@@ -188,6 +204,9 @@ export default function ViewPaste() {
         clearInterval(intervalRef.current)
         intervalRef.current = null
       }
+      // Remove global error handlers
+      window.removeEventListener('error', handleGlobalError)
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection)
     }
   }, [params.id])
 
@@ -206,15 +225,7 @@ export default function ViewPaste() {
       
       if (verifyPassword(password, paste.password_hash)) {
         try {
-          let hash = ''
-          try {
-            if (typeof window !== 'undefined' && window.location && window.location.hash) {
-              hash = window.location.hash.substring(1)
-            }
-          } catch (e) {
-            console.warn('Failed to access window.location.hash:', e)
-          }
-
+          const hash = window.location.hash.substring(1)
           if (!hash) {
             setError('Invalid link: Missing decryption key')
             return
@@ -258,104 +269,144 @@ export default function ViewPaste() {
       return
     }
 
-    try {
-      // Check if we're in a secure context (HTTPS or localhost)
-      let isSecureContext = false
-      try {
-        isSecureContext = window.isSecureContext || 
-                          window.location.protocol === 'https:' ||
-                          window.location.hostname === 'localhost' ||
-                          window.location.hostname === '127.0.0.1'
-      } catch (e) {
-        console.warn('Failed to check secure context:', e)
-        // Default to false if we can't check
-      }
+    // Check if we're in a secure context (HTTPS or localhost)
+    const isSecureContext = typeof window !== 'undefined' && (
+      window.isSecureContext || 
+      window.location.protocol === 'https:' ||
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname === '[::1]'
+    )
 
-      // Try modern Clipboard API first (requires secure context)
-      try {
-        if (navigator.clipboard && isSecureContext) {
-          try {
-            await navigator.clipboard.writeText(decryptedContent)
-            setCopied(true)
-            setTimeout(() => setCopied(false), 2000)
-            return
-          } catch (clipboardError: any) {
-            // Silently handle security errors - they're expected in insecure contexts
-            if (clipboardError?.name === 'SecurityError' || 
-                clipboardError?.name === 'NotAllowedError' ||
-                clipboardError?.message?.toLowerCase().includes('insecure') ||
-                clipboardError?.message?.toLowerCase().includes('permission')) {
-              // Expected in insecure contexts, fall through to fallback
-            } else {
-              // Other errors, log but don't expose to user
-              console.warn('Clipboard API error:', clipboardError)
-            }
-          }
+    // If not secure context, don't attempt clipboard operations
+    // Just select the textarea content so user can manually copy
+    if (!isSecureContext) {
+      // Find the textarea and select its content for manual copy
+      const textarea = document.querySelector('textarea[readonly]') as HTMLTextAreaElement
+      if (textarea) {
+        try {
+          textarea.focus()
+          textarea.select()
+        } catch (e) {
+          // Ignore errors in insecure context
         }
-      } catch (e) {
-        // Ignore errors checking for clipboard existence (e.g. insecure context)
+      }
+      return
+    }
+
+    try {
+      // Try modern Clipboard API first (requires secure context)
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        try {
+          await navigator.clipboard.writeText(decryptedContent)
+          setCopied(true)
+          setTimeout(() => setCopied(false), 2000)
+          return
+        } catch (clipboardError: any) {
+          // Check if it's a security/permission error
+          const isSecurityError = clipboardError?.name === 'SecurityError' || 
+                                  clipboardError?.name === 'NotAllowedError' ||
+                                  clipboardError?.name === 'DOMException' ||
+                                  clipboardError?.message?.toLowerCase().includes('insecure') ||
+                                  clipboardError?.message?.toLowerCase().includes('permission')
+          
+          if (!isSecurityError) {
+            // Only log non-security errors
+            console.warn('Clipboard API error:', clipboardError)
+          }
+          // Fall through to execCommand fallback
+        }
       }
       
-      // Fallback: Use execCommand (works in more contexts but deprecated)
-      // Only use if clipboard API isn't available or failed
-      if (document.queryCommandSupported && document.queryCommandSupported('copy')) {
-        const textArea = document.createElement('textarea')
-        textArea.value = decryptedContent
-        textArea.style.position = 'fixed'
-        textArea.style.left = '-999999px'
-        textArea.style.top = '-999999px'
-        textArea.setAttribute('readonly', '')
-        textArea.setAttribute('aria-hidden', 'true')
-        textArea.style.opacity = '0'
-        textArea.style.pointerEvents = 'none'
-        
-        document.body.appendChild(textArea)
+      // Fallback: Use execCommand only in secure contexts
+      // Check if execCommand is available and we're in secure context
+      if (isSecureContext && document.queryCommandSupported && document.queryCommandSupported('copy')) {
+        let textArea: HTMLTextAreaElement | null = null
         
         try {
-          // Focus and select
-          textArea.focus()
-          textArea.select()
-          textArea.setSelectionRange(0, decryptedContent.length)
+          textArea = document.createElement('textarea')
+          textArea.value = decryptedContent
+          textArea.style.position = 'fixed'
+          textArea.style.left = '-999999px'
+          textArea.style.top = '-999999px'
+          textArea.setAttribute('readonly', '')
+          textArea.setAttribute('aria-hidden', 'true')
+          textArea.style.opacity = '0'
+          textArea.style.pointerEvents = 'none'
           
-          const success = document.execCommand('copy')
+          document.body.appendChild(textArea)
           
-          if (success) {
-            setCopied(true)
-            setTimeout(() => setCopied(false), 2000)
-          } else {
-            throw new Error('execCommand copy failed')
+          // Wrap each DOM operation individually to prevent errors
+          let selectionSuccess = false
+          
+          try {
+            textArea.focus()
+          } catch (e) {
+            // Ignore focus errors
+          }
+          
+          try {
+            textArea.select()
+            selectionSuccess = true
+          } catch (e) {
+            // Ignore select errors, try setSelectionRange
+            try {
+              textArea.setSelectionRange(0, decryptedContent.length)
+              selectionSuccess = true
+            } catch (e2) {
+              // Ignore setSelectionRange errors
+            }
+          }
+          
+          if (selectionSuccess) {
+            try {
+              const success = document.execCommand('copy')
+              if (success) {
+                setCopied(true)
+                setTimeout(() => setCopied(false), 2000)
+              }
+            } catch (execError: any) {
+              // Silently ignore execCommand errors (expected in some contexts)
+              const isSecurityError = execError?.name === 'SecurityError' || 
+                                      execError?.name === 'DOMException' ||
+                                      execError?.message?.toLowerCase().includes('insecure') ||
+                                      execError?.message?.toLowerCase().includes('not allowed')
+              if (!isSecurityError) {
+                console.warn('execCommand failed:', execError)
+              }
+            }
           }
         } catch (err: any) {
-          // Silently handle security errors
-          if (err?.name === 'SecurityError' || 
-              err?.name === 'DOMException' ||
-              err?.message?.toLowerCase().includes('insecure') ||
-              err?.message?.toLowerCase().includes('not allowed')) {
-            // Expected in some contexts, don't log or alert
-          } else {
-            console.warn('Fallback copy method failed:', err)
+          // Silently handle any errors
+          const isSecurityError = err?.name === 'SecurityError' || 
+                                  err?.name === 'DOMException' ||
+                                  err?.message?.toLowerCase().includes('insecure')
+          if (!isSecurityError) {
+            console.warn('Copy fallback error:', err)
           }
         } finally {
           // Always clean up
-          if (document.body.contains(textArea)) {
-            document.body.removeChild(textArea)
+          if (textArea && document.body.contains(textArea)) {
+            try {
+              document.body.removeChild(textArea)
+            } catch (e) {
+              // Ignore cleanup errors
+            }
           }
         }
       }
       
-      // If both methods failed silently, the textarea is already selected
-      // User can manually copy with Ctrl+C / Cmd+C
-      
     } catch (error: any) {
       // Catch any unexpected errors - don't expose details
-      if (error?.name !== 'SecurityError' && 
-          error?.name !== 'DOMException' &&
-          !error?.message?.toLowerCase().includes('insecure') &&
-          !error?.message?.toLowerCase().includes('permission')) {
-        // Only log unexpected errors
+      const isSecurityError = error?.name === 'SecurityError' || 
+                              error?.name === 'DOMException' ||
+                              error?.message?.toLowerCase().includes('insecure') ||
+                              error?.message?.toLowerCase().includes('permission')
+      
+      if (!isSecurityError) {
+        // Only log unexpected non-security errors
         console.error('Unexpected copy error:', error)
       }
-      // Don't show alert - let user manually select and copy
     }
   }
 
