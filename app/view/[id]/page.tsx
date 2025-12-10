@@ -250,24 +250,28 @@ export default function ViewPaste() {
                               window.location.hostname === '127.0.0.1'
 
       // Try modern Clipboard API first (requires secure context)
-      if (navigator.clipboard && isSecureContext) {
-        try {
-          await navigator.clipboard.writeText(decryptedContent)
-          setCopied(true)
-          setTimeout(() => setCopied(false), 2000)
-          return
-        } catch (clipboardError: any) {
-          // Silently handle security errors - they're expected in insecure contexts
-          if (clipboardError?.name === 'SecurityError' || 
-              clipboardError?.name === 'NotAllowedError' ||
-              clipboardError?.message?.toLowerCase().includes('insecure') ||
-              clipboardError?.message?.toLowerCase().includes('permission')) {
-            // Expected in insecure contexts, fall through to fallback
-          } else {
-            // Other errors, log but don't expose to user
-            console.warn('Clipboard API error:', clipboardError)
+      try {
+        if (navigator.clipboard && isSecureContext) {
+          try {
+            await navigator.clipboard.writeText(decryptedContent)
+            setCopied(true)
+            setTimeout(() => setCopied(false), 2000)
+            return
+          } catch (clipboardError: any) {
+            // Silently handle security errors - they're expected in insecure contexts
+            if (clipboardError?.name === 'SecurityError' || 
+                clipboardError?.name === 'NotAllowedError' ||
+                clipboardError?.message?.toLowerCase().includes('insecure') ||
+                clipboardError?.message?.toLowerCase().includes('permission')) {
+              // Expected in insecure contexts, fall through to fallback
+            } else {
+              // Other errors, log but don't expose to user
+              console.warn('Clipboard API error:', clipboardError)
+            }
           }
         }
+      } catch (e) {
+        // Ignore errors checking for clipboard existence (e.g. insecure context)
       }
       
       // Fallback: Use execCommand (works in more contexts but deprecated)

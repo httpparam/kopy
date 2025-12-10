@@ -87,16 +87,20 @@ export default function Home() {
   const copyToClipboard = async () => {
     try {
       // Try modern Clipboard API first
-      if (navigator.clipboard && window.isSecureContext) {
-        try {
-          await navigator.clipboard.writeText(shareUrl)
-          setCopied(true)
-          setTimeout(() => setCopied(false), 2000)
-          return
-        } catch (clipboardError: any) {
-          // If clipboard API fails, fall through to fallback
-          console.warn('Clipboard API failed, trying fallback method')
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          try {
+            await navigator.clipboard.writeText(shareUrl)
+            setCopied(true)
+            setTimeout(() => setCopied(false), 2000)
+            return
+          } catch (clipboardError: any) {
+            // If clipboard API fails, fall through to fallback
+            console.warn('Clipboard API failed, trying fallback method')
+          }
         }
+      } catch (e) {
+        // Ignore errors checking for clipboard existence (e.g. insecure context)
       }
       
       // Fallback: Use deprecated execCommand

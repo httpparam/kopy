@@ -102,19 +102,23 @@ export default function PreviewPaste() {
   const copyToClipboard = async () => {
     try {
       // Try modern Clipboard API first
-      if (navigator.clipboard && window.isSecureContext) {
-        try {
-          await navigator.clipboard.writeText(shareUrl)
-          setCopied(true)
-          setTimeout(() => setCopied(false), 2000)
-          return
-        } catch (clipboardError: any) {
-          // If clipboard API fails, fall through to fallback
-          if (clipboardError?.name !== 'SecurityError' && 
-              !clipboardError?.message?.includes('insecure')) {
-            console.warn('Clipboard API failed, using fallback:', clipboardError)
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          try {
+            await navigator.clipboard.writeText(shareUrl)
+            setCopied(true)
+            setTimeout(() => setCopied(false), 2000)
+            return
+          } catch (clipboardError: any) {
+            // If clipboard API fails, fall through to fallback
+            if (clipboardError?.name !== 'SecurityError' && 
+                !clipboardError?.message?.includes('insecure')) {
+              console.warn('Clipboard API failed, using fallback:', clipboardError)
+            }
           }
         }
+      } catch (e) {
+        // Ignore errors checking for clipboard existence (e.g. insecure context)
       }
       
       // Fallback: Use execCommand only if we're in a context that might support it
