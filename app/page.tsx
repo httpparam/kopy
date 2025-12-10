@@ -146,7 +146,12 @@ export default function Home() {
     const subject = encodeURIComponent('Secure Paste from KOPY')
     const body = encodeURIComponent(`I've shared a secure paste with you:\n\n${shareUrl}\n\nThe content will be automatically deleted when it expires.`)
     const mailtoLink = `mailto:?subject=${subject}&body=${body}`
-    window.open(mailtoLink)
+    try {
+      window.open(mailtoLink)
+    } catch (e) {
+      console.error('Failed to open email client:', e)
+      alert('Could not open email client automatically. Please send an email manually.')
+    }
   }
 
   const createNewPaste = () => {

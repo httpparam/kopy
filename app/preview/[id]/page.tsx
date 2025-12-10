@@ -35,7 +35,9 @@ export default function PreviewPaste() {
         const pasteId = params.id as string
         let hash = ''
         try {
-          hash = window.location.hash.substring(1) // Remove the #
+          if (typeof window !== 'undefined' && window.location && window.location.hash) {
+            hash = window.location.hash.substring(1) // Remove the #
+          }
         } catch (e) {
           console.warn('Failed to access window.location.hash:', e)
         }
@@ -48,7 +50,11 @@ export default function PreviewPaste() {
 
         const decryptionKey = decodeURIComponent(hash)
         try {
-          setShareUrl(`${window.location.origin}/view/${pasteId}#${encodeURIComponent(decryptionKey)}`)
+          if (typeof window !== 'undefined' && window.location && window.location.origin) {
+            setShareUrl(`${window.location.origin}/view/${pasteId}#${encodeURIComponent(decryptionKey)}`)
+          } else {
+            setShareUrl(`/view/${pasteId}#${encodeURIComponent(decryptionKey)}`)
+          }
         } catch (e) {
           console.warn('Failed to access window.location.origin:', e)
           // Fallback if origin is not accessible
@@ -201,7 +207,12 @@ export default function PreviewPaste() {
     const subject = encodeURIComponent('Secure Paste from KOPY')
     const body = encodeURIComponent(`I've shared a secure paste with you:\n\n${shareUrl}\n\nThe content will be automatically deleted when it expires.`)
     const mailtoLink = `mailto:?subject=${subject}&body=${body}`
-    window.open(mailtoLink)
+    try {
+      window.open(mailtoLink)
+    } catch (e) {
+      console.error('Failed to open email client:', e)
+      alert('Could not open email client automatically. Please send an email manually.')
+    }
   }
 
   const parseMarkdown = (text: string): string => {

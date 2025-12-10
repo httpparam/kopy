@@ -39,7 +39,9 @@ export default function ViewPaste() {
         
         let hash = ''
         try {
-          hash = window.location.hash.substring(1) // Remove the #
+          if (typeof window !== 'undefined' && window.location && window.location.hash) {
+            hash = window.location.hash.substring(1) // Remove the #
+          }
         } catch (e) {
           console.warn('Failed to access window.location.hash:', e)
         }
@@ -206,7 +208,9 @@ export default function ViewPaste() {
         try {
           let hash = ''
           try {
-            hash = window.location.hash.substring(1)
+            if (typeof window !== 'undefined' && window.location && window.location.hash) {
+              hash = window.location.hash.substring(1)
+            }
           } catch (e) {
             console.warn('Failed to access window.location.hash:', e)
           }
