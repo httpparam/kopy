@@ -36,7 +36,13 @@ export default function ViewPaste() {
     const fetchPaste = async () => {
       try {
         const pasteId = params.id as string
-        const hash = window.location.hash.substring(1) // Remove the #
+        
+        let hash = ''
+        try {
+          hash = window.location.hash.substring(1) // Remove the #
+        } catch (e) {
+          console.warn('Failed to access window.location.hash:', e)
+        }
         
         if (!hash) {
           setError('Invalid link: Missing decryption key')
@@ -198,7 +204,13 @@ export default function ViewPaste() {
       
       if (verifyPassword(password, paste.password_hash)) {
         try {
-          const hash = window.location.hash.substring(1)
+          let hash = ''
+          try {
+            hash = window.location.hash.substring(1)
+          } catch (e) {
+            console.warn('Failed to access window.location.hash:', e)
+          }
+
           if (!hash) {
             setError('Invalid link: Missing decryption key')
             return
@@ -244,10 +256,16 @@ export default function ViewPaste() {
 
     try {
       // Check if we're in a secure context (HTTPS or localhost)
-      const isSecureContext = window.isSecureContext || 
-                              window.location.protocol === 'https:' ||
-                              window.location.hostname === 'localhost' ||
-                              window.location.hostname === '127.0.0.1'
+      let isSecureContext = false
+      try {
+        isSecureContext = window.isSecureContext || 
+                          window.location.protocol === 'https:' ||
+                          window.location.hostname === 'localhost' ||
+                          window.location.hostname === '127.0.0.1'
+      } catch (e) {
+        console.warn('Failed to check secure context:', e)
+        // Default to false if we can't check
+      }
 
       // Try modern Clipboard API first (requires secure context)
       try {
