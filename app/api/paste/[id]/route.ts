@@ -7,32 +7,37 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const pasteId = id
+    const pasteId = id?.trim()
     
-    if (!pasteId) {
+    // Validate paste ID format (should be hex string)
+    if (!pasteId || pasteId.length < 10 || !/^[a-f0-9]+$/i.test(pasteId)) {
       return NextResponse.json(
-        { error: 'Paste ID is required' },
+        { error: 'Invalid paste ID' },
         { status: 400 }
       )
     }
 
-    console.log('Fetching paste with ID:', pasteId)
     const paste = await getPasteIfValid(pasteId)
     
     if (!paste) {
-      console.log('Paste not found or expired:', pasteId)
+      // Don't differentiate between not found and expired for security
       return NextResponse.json(
         { error: 'Paste not found or has expired' },
         { status: 404 }
       )
     }
 
-    console.log('Paste found:', paste.id)
-    return NextResponse.json(paste)
+    // Remove sensitive fields before sending (password_hash is already optional)
+    const { password_hash, ...safePaste } = paste
+    
+    return NextResponse.json(safePaste)
   } catch (error) {
-    console.error('Error fetching paste:', error)
+    // Log error for server-side debugging but don't expose details
+    console.error('Error fetching paste:', error instanceof Error ? error.message : 'Unknown error')
+    
+    // Return generic error to prevent information leakage
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to retrieve paste' },
       { status: 500 }
     )
   }

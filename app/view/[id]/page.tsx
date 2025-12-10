@@ -60,23 +60,28 @@ export default function ViewPaste() {
         }
 
         const pasteData = await response.json() as PasteData
+        
+        // Validate paste data structure
+        if (!pasteData || !pasteData.id || !pasteData.encrypted_content) {
+          setError('Invalid paste data received')
+          setIsLoading(false)
+          return
+        }
+        
         setPaste(pasteData)
-
-        // Debug logging
-        console.log('Paste data:', pasteData)
-        console.log('Password hash:', pasteData.password_hash)
 
         // Calculate time left FIRST (for both password protected and non-protected pastes)
         const expiresAt = new Date(pasteData.expires_at)
         const now = new Date()
+        
+        // Validate date
+        if (isNaN(expiresAt.getTime())) {
+          setError('Invalid expiration date')
+          setIsLoading(false)
+          return
+        }
+        
         const timeDiff = expiresAt.getTime() - now.getTime()
-
-        console.log('Time calculation:', {
-          expiresAt: expiresAt.toISOString(),
-          now: now.toISOString(),
-          timeDiff: timeDiff,
-          timeDiffMinutes: Math.floor(timeDiff / 60000)
-        })
 
         if (timeDiff <= 0) {
           setError('This paste has expired')
@@ -107,7 +112,6 @@ export default function ViewPaste() {
             timeString = `${totalMinutes}m ${seconds}s`
           }
           
-          console.log('Setting time left:', timeString)
           setTimeLeft(timeString)
         }
 
@@ -119,7 +123,6 @@ export default function ViewPaste() {
 
         // Check if password protected
         if (pasteData.password_hash) {
-          console.log('Paste is password protected')
           setIsPasswordProtected(true)
           setIsLoading(false)
           return
@@ -127,11 +130,28 @@ export default function ViewPaste() {
 
         // Decrypt the content if not password protected
         try {
+          // Validate decryption key format
+          if (!decryptionKey || decryptionKey.length < 10) {
+            setError('Invalid decryption key')
+            setIsLoading(false)
+            return
+          }
+          
           const decrypted = decrypt(pasteData.encrypted_content, decryptionKey)
+          
+          // Validate decryption result
+          if (decrypted === '' || !decrypted) {
+            setError('Failed to decrypt content. The link may be corrupted or invalid.')
+            setIsLoading(false)
+            return
+          }
+          
           setDecryptedContent(decrypted)
-          setIsPasswordVerified(true) // This is correct for non-password protected pastes
+          setIsPasswordVerified(true)
         } catch (decryptError) {
-          setError('Failed to decrypt content. The link may be corrupted.')
+          // Don't expose decryption errors to prevent information leakage
+          console.error('Decryption error:', decryptError)
+          setError('Failed to decrypt content. Please verify the link is correct and try again.')
           setIsLoading(false)
           return
         }
@@ -139,8 +159,15 @@ export default function ViewPaste() {
         setIsLoading(false)
 
       } catch (err) {
+        // Log error for debugging but don't expose details to user
         console.error('Error fetching paste:', err)
-        setError('Failed to load paste. Please check the link and try again.')
+        
+        // Provide generic error message to prevent information leakage
+        if (err instanceof TypeError && err.message.includes('fetch')) {
+          setError('Network error. Please check your connection and try again.')
+        } else {
+          setError('Failed to load paste. Please verify the link is correct.')
+        }
         setIsLoading(false)
       }
     }
@@ -162,42 +189,89 @@ export default function ViewPaste() {
 
     setPasswordError('')
     
-    // Verify password
-    if (verifyPassword(password, paste.password_hash!)) {
-      try {
-        const hash = window.location.hash.substring(1)
-        const decryptionKey = decodeURIComponent(hash)
-        const decrypted = decrypt(paste.encrypted_content, decryptionKey)
-        setDecryptedContent(decrypted)
-        setIsPasswordVerified(true)
-      } catch (decryptError) {
-        setError('Failed to decrypt content. The link may be corrupted.')
+    try {
+      // Verify password
+      if (!paste.password_hash) {
+        setPasswordError('This paste is not password protected.')
+        return
       }
-    } else {
-      setPasswordError('Incorrect password. Please try again.')
+      
+      if (verifyPassword(password, paste.password_hash)) {
+        try {
+          const hash = window.location.hash.substring(1)
+          if (!hash) {
+            setError('Invalid link: Missing decryption key')
+            return
+          }
+          
+          const decryptionKey = decodeURIComponent(hash)
+          
+          // Validate decryption key
+          if (!decryptionKey || decryptionKey.length < 10) {
+            setError('Invalid decryption key')
+            return
+          }
+          
+          const decrypted = decrypt(paste.encrypted_content, decryptionKey)
+          
+          // Validate decryption result
+          if (!decrypted || decrypted === '') {
+            setError('Failed to decrypt content. The link may be corrupted.')
+            return
+          }
+          
+          setDecryptedContent(decrypted)
+          setIsPasswordVerified(true)
+        } catch (decryptError) {
+          // Don't expose decryption errors
+          console.error('Decryption error:', decryptError)
+          setError('Failed to decrypt content. Please verify the link is correct.')
+        }
+      } else {
+        setPasswordError('Incorrect password. Please try again.')
+      }
+    } catch (error) {
+      console.error('Password verification error:', error)
+      setPasswordError('An error occurred. Please try again.')
     }
   }
 
   const copyContent = async () => {
+    // Validate content exists
+    if (!decryptedContent || decryptedContent.trim() === '') {
+      return
+    }
+
     try {
-      // Try modern Clipboard API first
-      if (navigator.clipboard && window.isSecureContext) {
+      // Check if we're in a secure context (HTTPS or localhost)
+      const isSecureContext = window.isSecureContext || 
+                              window.location.protocol === 'https:' ||
+                              window.location.hostname === 'localhost' ||
+                              window.location.hostname === '127.0.0.1'
+
+      // Try modern Clipboard API first (requires secure context)
+      if (navigator.clipboard && isSecureContext) {
         try {
           await navigator.clipboard.writeText(decryptedContent)
           setCopied(true)
           setTimeout(() => setCopied(false), 2000)
           return
         } catch (clipboardError: any) {
-          // If clipboard API fails, fall through to fallback
-          if (clipboardError?.name !== 'SecurityError' && 
-              !clipboardError?.message?.includes('insecure')) {
-            console.warn('Clipboard API failed, using fallback:', clipboardError)
+          // Silently handle security errors - they're expected in insecure contexts
+          if (clipboardError?.name === 'SecurityError' || 
+              clipboardError?.name === 'NotAllowedError' ||
+              clipboardError?.message?.toLowerCase().includes('insecure') ||
+              clipboardError?.message?.toLowerCase().includes('permission')) {
+            // Expected in insecure contexts, fall through to fallback
+          } else {
+            // Other errors, log but don't expose to user
+            console.warn('Clipboard API error:', clipboardError)
           }
         }
       }
       
-      // Fallback: Use execCommand only if we're in a context that might support it
-      // Check if execCommand is available before trying
+      // Fallback: Use execCommand (works in more contexts but deprecated)
+      // Only use if clipboard API isn't available or failed
       if (document.queryCommandSupported && document.queryCommandSupported('copy')) {
         const textArea = document.createElement('textarea')
         textArea.value = decryptedContent
@@ -205,48 +279,57 @@ export default function ViewPaste() {
         textArea.style.left = '-999999px'
         textArea.style.top = '-999999px'
         textArea.setAttribute('readonly', '')
+        textArea.setAttribute('aria-hidden', 'true')
         textArea.style.opacity = '0'
+        textArea.style.pointerEvents = 'none'
+        
         document.body.appendChild(textArea)
-        textArea.focus()
-        textArea.select()
         
         try {
+          // Focus and select
+          textArea.focus()
+          textArea.select()
+          textArea.setSelectionRange(0, decryptedContent.length)
+          
           const success = document.execCommand('copy')
+          
           if (success) {
             setCopied(true)
             setTimeout(() => setCopied(false), 2000)
           } else {
-            throw new Error('execCommand returned false')
+            throw new Error('execCommand copy failed')
           }
         } catch (err: any) {
-          // Silently handle expected security errors
+          // Silently handle security errors
           if (err?.name === 'SecurityError' || 
               err?.name === 'DOMException' ||
-              err?.message?.includes('insecure')) {
-            // Expected in some contexts, don't show error
-            console.warn('Copy operation not allowed in this context')
+              err?.message?.toLowerCase().includes('insecure') ||
+              err?.message?.toLowerCase().includes('not allowed')) {
+            // Expected in some contexts, don't log or alert
           } else {
-            console.error('Fallback copy failed:', err)
+            console.warn('Fallback copy method failed:', err)
           }
-          // Show user-friendly message
-          alert('Unable to copy automatically. Please select and copy the text manually.')
         } finally {
+          // Always clean up
           if (document.body.contains(textArea)) {
             document.body.removeChild(textArea)
           }
         }
-      } else {
-        // execCommand not supported, show manual copy message
-        alert('Copy is not supported in this browser. Please select and copy the text manually.')
       }
+      
+      // If both methods failed silently, the textarea is already selected
+      // User can manually copy with Ctrl+C / Cmd+C
+      
     } catch (error: any) {
-      // Catch any other unexpected errors
+      // Catch any unexpected errors - don't expose details
       if (error?.name !== 'SecurityError' && 
           error?.name !== 'DOMException' &&
-          !error?.message?.includes('insecure')) {
+          !error?.message?.toLowerCase().includes('insecure') &&
+          !error?.message?.toLowerCase().includes('permission')) {
+        // Only log unexpected errors
         console.error('Unexpected copy error:', error)
       }
-      alert('Unable to copy. Please select and copy the text manually.')
+      // Don't show alert - let user manually select and copy
     }
   }
 

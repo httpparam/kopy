@@ -12,8 +12,25 @@ export function encrypt(text: string, key: string): string {
 
 // Decrypt text with a key
 export function decrypt(encryptedText: string, key: string): string {
-  const bytes = CryptoJS.AES.decrypt(encryptedText, key)
-  return bytes.toString(CryptoJS.enc.Utf8)
+  // Validate inputs
+  if (!encryptedText || !key) {
+    throw new Error('Invalid decryption parameters')
+  }
+  
+  try {
+    const bytes = CryptoJS.AES.decrypt(encryptedText, key)
+    const decrypted = bytes.toString(CryptoJS.enc.Utf8)
+    
+    // Validate decryption result
+    if (!decrypted || decrypted.length === 0) {
+      throw new Error('Decryption failed - invalid key or corrupted data')
+    }
+    
+    return decrypted
+  } catch (error) {
+    // Re-throw with generic message to prevent information leakage
+    throw new Error('Decryption failed')
+  }
 }
 
 // Generate a unique ID for the paste
