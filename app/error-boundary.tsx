@@ -46,7 +46,9 @@ export class ErrorBoundary extends Component<Props, State> {
               <AlertCircle className="h-12 w-12 text-red mx-auto mb-4" />
               <h2 className="text-2xl font-semibold text-text mb-2">Something went wrong</h2>
               <p className="text-subtext1 mb-6">
-                {this.state.error?.message || 'An unexpected error occurred'}
+                {this.state.error?.name === 'SecurityError' || this.state.error?.message?.includes('insecure')
+                  ? 'Your browser security settings are preventing this action. Please try disabling strict privacy protection or using a different browser.'
+                  : (this.state.error?.message || 'An unexpected error occurred')}
               </p>
               <button
                 onClick={() => {

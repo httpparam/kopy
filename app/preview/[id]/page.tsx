@@ -35,11 +35,18 @@ export default function PreviewPaste() {
         const pasteId = params.id as string
         let hash = ''
         try {
-          if (typeof window !== 'undefined' && window.location && window.location.hash) {
-            hash = window.location.hash.substring(1) // Remove the #
+          // Defensive check for window.location access which can throw SecurityError
+          if (typeof window !== 'undefined') {
+            try {
+              if (window.location && window.location.hash) {
+                hash = window.location.hash.substring(1) // Remove the #
+              }
+            } catch (e) {
+              console.warn('SecurityError accessing window.location.hash:', e)
+            }
           }
         } catch (e) {
-          console.warn('Failed to access window.location.hash:', e)
+          console.warn('General error accessing window:', e)
         }
         
         if (!hash) {
@@ -50,14 +57,23 @@ export default function PreviewPaste() {
 
         const decryptionKey = decodeURIComponent(hash)
         try {
-          if (typeof window !== 'undefined' && window.location && window.location.origin) {
-            setShareUrl(`${window.location.origin}/view/${pasteId}#${encodeURIComponent(decryptionKey)}`)
+          let origin = ''
+          try {
+             if (typeof window !== 'undefined' && window.location && window.location.origin) {
+               origin = window.location.origin
+             }
+          } catch (e) {
+            console.warn('SecurityError accessing window.location.origin:', e)
+          }
+
+          if (origin) {
+            setShareUrl(`${origin}/view/${pasteId}#${encodeURIComponent(decryptionKey)}`)
           } else {
+            // Fallback if origin is not accessible
             setShareUrl(`/view/${pasteId}#${encodeURIComponent(decryptionKey)}`)
           }
         } catch (e) {
-          console.warn('Failed to access window.location.origin:', e)
-          // Fallback if origin is not accessible
+          console.warn('Failed to construct share URL:', e)
           setShareUrl(`/view/${pasteId}#${encodeURIComponent(decryptionKey)}`)
         }
 
